@@ -1556,7 +1556,7 @@
         hotspots, contacts, foldx_mutations: foldxMuts, mutCatalog,
         pdbText: toSanitizedPDBString(ordered), sdfText: toLigandSDFString(ordered),
         paeMat, lenA: resA.length, lenB: resB.length, seqA, seqB,
-        evalDgAtSalt: (s_mM) => evalEnvAtSalt(s_mM).dUni
+        evalDgAtSalt: (s_mM) => clamp(evalEnvAtSalt(s_mM).dUni + ptmBonus, -22.0, 5.0)
       };
     }
 
@@ -1687,7 +1687,21 @@
       for (const jf of jsonFiles) {
         if (jf.name.includes("unippi_full_report")) {
           const txt = await jf.text();
-          ALL_RESULTS = JSON.parse(txt);
+          ALL_RESULTS = JSON.parse(txt).map(r => {
+            r.hotspots = (r.hotspots || []).map(h => ({
+              ...h,
+              ddG_Ala: h.ddG_Ala !== undefined ? h.ddG_Ala : (h.ddG_Ala_kcal || 0.0),
+              ddG_Pro: h.ddG_Pro !== undefined ? h.ddG_Pro : Number(((h.ddG_Ala_kcal || 0.0) + 3.10).toFixed(2)),
+              buried: h.buried !== undefined ? h.buried : (h.f_buried !== undefined ? h.f_buried : 0.35),
+              note: h.note || h.class || "HOTSPOT"
+            }));
+            const baseDg = r.dG_uni_kcal || -8.0, fAp = r.f_apolar || 0.5;
+            r.evalDgAtSalt = (s_mM) => {
+              const iM = clamp(s_mM / 1000.0, 0.01, 2.0);
+              return clamp(baseDg - (0.85 * fAp - 0.45 * (1.0 - fAp)) * (iM - 0.15) * 2.2, -22.0, 5.0);
+            };
+            return r;
+          });
           ACTIVE_INDEX = 0;
           updateUI();
           return;
@@ -1789,6 +1803,14 @@
                 const km = Math.exp(res.dG_uni_kcal / (R_GAS_KCAL * tempK));
                 res.Kd_M = Number(km.toExponential(4));
                 res.Kd_nM = Number((km * 1e9).toFixed(3));
+                const sAfNow = clamp((-res.dG_uni_kcal - 5.0) / 8.5, 0.0, 1.0);
+                const uNow = res.mode === "MODE_A_PRED_FULL"
+                  ? Number((0.25*res.ipTM + 0.30*res.LIS + 0.25*res.pDockQ_PAE + 0.20*sAfNow).toFixed(4))
+                  : Number((0.55*clamp(res.pDockQ_coord / 0.742, 0.0, 1.0) + 0.45*sAfNow).toFixed(4));
+                res.UIS = uNow;
+                res.UIS_margin = Number((uNow - UIS_THRESHOLD).toFixed(4));
+                res.threshold_call = uNow >= UIS_THRESHOLD ? "ABOVE_THRESHOLD" : "BELOW_THRESHOLD";
+                res.binding_class = uNow >= UIS_HIGH_CONF ? "HIGH_CONFIDENCE" : (uNow >= 0.42 ? "MODERATE" : "LOW_OR_DECOY");
               }
               ALL_RESULTS.push(res);
             }
