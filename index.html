@@ -539,7 +539,7 @@
         </label>
         <label>PTM Gating (CPK21 / PP2A)
           <select id="ptmStateSelect" onchange="recomputeActiveSuite()">
-            <option value="native">Baseline / PP2A-Dephospho (Ser)</option>
+            <option value="native">Baseline / Unmodified State (Ser)</option>
             <option value="phospho">CPK21-Phosphorylated (pSer-14-3-3 Lock, -2.20 kcal/mol)</option>
             <option value="dephospho">PP2A-Dephosphorylated (Release State, +3.10 kcal/mol)</option>
           </select>
@@ -1363,6 +1363,16 @@
           }
 
           if (minD > 5.5) continue;
+          let pPi = 0;
+          if (AROMATIC_RINGS[cna] && AROMATIC_RINGS[cnb]) {
+            const rAtomsA = ra.atoms.filter(a => AROMATIC_RINGS[cna].has(a.name));
+            const rAtomsB = rb.atoms.filter(a => AROMATIC_RINGS[cnb].has(a.name));
+            if (rAtomsA.length >= 3 && rAtomsB.length >= 3) {
+              const centA = [meanArr(rAtomsA.map(a=>a.x)), meanArr(rAtomsA.map(a=>a.y)), meanArr(rAtomsA.map(a=>a.z))];
+              const centB = [meanArr(rAtomsB.map(a=>a.x)), meanArr(rAtomsB.map(a=>a.y)), meanArr(rAtomsB.map(a=>a.z))];
+              if (dist3(centA, centB) <= 5.5) pPi = 1;
+            }
+          }
           intfA.add(ra.key); intfB.add(rb.key);
           if (cbDist > 8.0) { intfPae.push(pairPae); weightsSeen.push(wij); }
 
@@ -1375,13 +1385,13 @@
           if (prodigyIC[pairCls] !== undefined) prodigyIC[pairCls] += wij;
 
           const effSb = Math.min(pSb, 2), effHb = Math.min(pHb, 2), effHp = Math.min(pHp, 6), effHpW = Math.min(hpDistSum, 6.0), effClash = Math.min(pClash, 3);
-          nSb += effSb; nHb += effHb; nHp += effHp; nSs += pSs; nClash += effClash;
-          wSb += wij*effSb; wHb += wij*effHb; wHp += wij*effHpW; wClash += wij*effClash;
+          nSb += effSb; nHb += effHb; nHp += effHp; nPi += pPi; nSs += pSs; nClash += effClash;
+          wSb += wij*effSb; wHb += wij*effHb; wHp += wij*effHpW; wPi += wij*pPi; wClash += wij*effClash;
 
           for (const rk of [ra.key, rb.key]) {
             if (!resContrib.has(rk)) resContrib.set(rk, { sb:0, hb:0, hp:0, pi:0 });
             const rc = resContrib.get(rk);
-            rc.sb += wij*effSb; rc.hb += wij*effHb; rc.hp += wij*effHpW;
+            rc.sb += wij*effSb; rc.hb += wij*effHb; rc.hp += wij*effHpW; rc.pi += wij*pPi;
           }
 
           contacts.push({
