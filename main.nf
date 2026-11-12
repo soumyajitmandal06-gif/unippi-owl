@@ -2,7 +2,7 @@
 nextflow.enable.dsl=2
 
 /*
- * UniPPI-OWL v1.7 — Nextflow DSL2 High-Throughput Structure-to-Affinity Pipeline
+ * UniPPI-OWL v1.8 — Nextflow DSL2 High-Throughput Structure-to-Affinity Pipeline
  * Integrates unippi_cli.py as an automated batch node for AlphaFold3 / PDB screening.
  */
 
@@ -12,6 +12,7 @@ params.temp           = 298.15
 params.lambda_pae     = 8.0
 params.ionic_strength = 150.0
 params.ph             = 7.2
+params.ptm_state      = "native"
 params.mutate         = "A:LEU5PRO,A:PRO5LEU,A:ASP2ALA,A:TYR5ALA"
 
 process UNIPPI_BATCH_SCREEN {
@@ -35,6 +36,7 @@ process UNIPPI_BATCH_SCREEN {
         --lambda-pae ${params.lambda_pae} \
         --ionic-strength ${params.ionic_strength} \
         --ph ${params.ph} \
+        --ptm-state ${params.ptm_state} \
         ${mut_arg}
     """
 }

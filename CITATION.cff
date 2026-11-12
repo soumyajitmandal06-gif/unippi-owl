@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use UniPPI-OWL in your research, please cite it using the metadata below."
+title: "UniPPI-OWL: Universal Structure-to-Affinity, Interface Auditing, PTM/Metal Gating, and Mutational Screening Resource"
+version: 1.8.0
+date-released: 2026-11-12
+authors:
+  - family-names: "Mandal"
+    given-names: "Soumyajit"
+    affiliation: "Department of Biochemistry, Central University of Rajasthan, India"
+repository-code: "https://github.com/soumyajitmandal06-gif/unippi-owl"
+url: "https://soumyajitmandal06-gif.github.io/unippi-owl/"
+license: BSD-3-Clause
+keywords:
+  - AlphaFold3
+  - protein-protein interaction
+  - binding free energy
+  - bZIP transcription factors
+  - Arabidopsis VIP1
+  - in-silico mutagenesis

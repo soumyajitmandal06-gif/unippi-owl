@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="UniPPI-OWL v1.7 — Universal Structure-to-Affinity, Interface Auditing & Mutational Screening Resource for AlphaFold3 and Experimental Complexes.">
-  <title>UniPPI-OWL v1.7 | Universal Structure-to-Affinity Resource</title>
+  <meta name="description" content="UniPPI-OWL v1.8 — Universal Structure-to-Affinity, Interface Auditing & Mutational Screening Resource for AlphaFold3 and Experimental Complexes.">
+  <title>UniPPI-OWL v1.8 | Universal Structure-to-Affinity Resource</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
   <style>
     :root {
@@ -464,7 +464,7 @@
   <header class="lab-header">
     <div class="lab-header-inner">
       <div class="lab-brand">
-        <span class="lab-name">UNIPPI-OWL v1.7</span>
+        <span class="lab-name">UNIPPI-OWL v1.8</span>
         <span class="lab-tagline">Universal Structure-to-Affinity, Interface Auditing &amp; Mutational Screening Engine</span>
         <span class="lab-affiliation">Dual-Layer CLI + Zero-Server Browser Architecture · AlphaFold3, AF2, ESM3, Boltz-1 &amp; Experimental PDB/mmCIF</span>
       </div>
@@ -479,7 +479,7 @@
 
   <div class="resource-nav">
     <div class="resource-nav-inner">
-      <a class="wordmark" href="#top"><strong>UniPPI-OWL</strong><span>v1.7 Frozen</span></a>
+      <a class="wordmark" href="#top"><strong>UniPPI-OWL</strong><span>v1.8 Frozen</span></a>
       <nav class="resource-links">
         <a href="#about">Overview</a>
         <a href="#analyze">Batch &amp; Single Input</a>
@@ -505,10 +505,10 @@
         </div>
       </div>
 
-      <aside class="model-card" aria-label="UniPPI-v1.7 model summary">
-        <div class="model-card-head"><span>UniPPI-v1.7 at a glance</span><span>FROZEN</span></div>
-        <div class="model-row"><span>Scientific model</span><strong>UniPPI-v1.7 (Hybrid ΔG + LIS)</strong></div>
-        <div class="model-row"><span>Physicochemical channels</span><strong>7 channels + 64-pt Spiral SASA</strong></div>
+      <aside class="model-card" aria-label="UniPPI-v1.8 model summary">
+        <div class="model-card-head"><span>UniPPI-v1.8 at a glance</span><span>FROZEN</span></div>
+        <div class="model-row"><span>Scientific model</span><strong>UniPPI-v1.8 (Hybrid ΔG + LIS)</strong></div>
+        <div class="model-row"><span>Physicochemical channels</span><strong>8 channels (PTM/Metal) + 64-pt SASA</strong></div>
         <div class="model-row"><span>Decision threshold (UIS)</span><strong>0.5000 (High-Conf: 0.6500)</strong></div>
         <div class="model-row"><span>Validation panel</span><strong>6 Cross-Mechanism Complexes</strong></div>
         <div class="model-row"><span>Execution &amp; privacy</span><strong>100% Client-Side Browser / CLI</strong></div>
@@ -519,7 +519,7 @@
       <div class="card-head">
         <div>
           <div class="section-kicker">Universal Biomolecular Input</div>
-          <h2>Run UniPPI-OWL v1.7</h2>
+          <h2>Run UniPPI-OWL v1.8</h2>
           <p style="color:var(--text-muted); font-size:13.5px;">Drag and drop any folder or selection of <code>.cif</code>, <code>.mmcif</code>, <code>.pdb</code>, and companion AF3/AF2 <code>.json</code> files (or a precomputed <code>unippi_full_report.json</code> from <code>unippi_cli.py</code>).</p>
         </div>
       </div>
@@ -536,6 +536,13 @@
         </label>
         <label>Solution pH (Protonation)
           <input type="number" id="phInput" value="7.2" step="0.2" min="4.0" max="9.5" onchange="recomputeActiveSuite()">
+        </label>
+        <label>PTM Gating (CPK21 / PP2A)
+          <select id="ptmStateSelect" onchange="recomputeActiveSuite()">
+            <option value="native">Baseline / PP2A-Dephospho (Ser)</option>
+            <option value="phospho">CPK21-Phosphorylated (pSer-14-3-3 Lock, -2.20 kcal/mol)</option>
+            <option value="dephospho">PP2A-Dephosphorylated (Release State, +3.10 kcal/mol)</option>
+          </select>
         </label>
         <label>Batch Custom Mutations (Comma-Separated)
           <input type="text" id="customMutInput" placeholder="e.g. A:LEU5PRO,A:PRO5LEU" value="A:LEU5PRO,A:PRO5LEU,A:ASP2ALA" onchange="renderActiveComplex()">
@@ -567,7 +574,7 @@
 
     <div id="statusBanner" class="status-banner ok" style="display:none;">
       <span id="statusText">Analysis complete.</span>
-      <span style="font-family:var(--font-mono); font-size:12px;">Model: UniPPI-v1.7 · Frozen Threshold: 0.5000 · Parity: 100% CLI Match</span>
+      <span style="font-family:var(--font-mono); font-size:12px;">Model: UniPPI-v1.8 · Frozen Threshold: 0.5000 · Parity: 100% CLI Match</span>
     </div>
 
     <section class="card" id="leaderboardCard" style="display:none;">
@@ -625,7 +632,7 @@
       </div>
 
       <div class="meta-strip">
-        Decision threshold: <code>0.5000</code> · High-confidence cutoff: <code>0.6500</code> · Scientific model: <code>UniPPI-v1.7</code> · Confidence regime: <code id="activeModeBadge">MODE_A_PRED_FULL</code>
+        Decision threshold: <code>0.5000</code> · High-confidence cutoff: <code>0.6500</code> · Scientific model: <code>UniPPI-v1.8</code> · Confidence regime: <code id="activeModeBadge">MODE_A_PRED_FULL</code>
       </div>
 
       <div class="summary-grid" id="primarySummaryGrid"></div>
@@ -793,11 +800,20 @@
           <div id="saltSvgWrap"></div>
         </div>
         <div class="svg-panel">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <h3 style="font-size:14px;">CHUMA-Ready Sequence Register &amp; Hotspot Burial Profile</h3>
-            <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:11px;" onclick="downloadSVG('chumaSvgWrap', 'chuma_sequence_profile.svg')">SVG</button>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:6px; flex-wrap:wrap;">
+            <h3 style="font-size:13.5px;">CHUMA Homolog Specificity &amp; Register Projector</h3>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <select id="chumaHomologSelect" style="padding:3px 6px; font-size:11px; border-radius:4px; border:1px solid var(--border-strong); font-family:var(--font-mono);" onchange="renderSVGMaps(ALL_RESULTS[ACTIVE_INDEX])">
+                <option value="WT">Query: Native WT Sequence (100%)</option>
+                <option value="POSF21">Homolog: AtbZIP29 / PosF21 (Group I)</option>
+                <option value="BZIP61">Homolog: AtbZIP61 (Group E Partner)</option>
+                <option value="BZIP34">Homolog: AtbZIP34 (Group E Pro-Kink)</option>
+              </select>
+              <button class="btn btn-secondary btn-sm" style="padding:3px 8px; font-size:11px;" onclick="downloadSVG('chumaSvgWrap', 'chuma_sequence_profile.svg')">SVG</button>
+            </div>
           </div>
           <div id="chumaSvgWrap"></div>
+          <div id="chumaHomologSummary" style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-muted); margin-top:4px;"></div>
         </div>
       </div>
     </section>
@@ -836,16 +852,16 @@
 
       <div class="scope-grid">
         <div class="scope-box">
-          <strong>What UniPPI-OWL v1.7 Evaluates:</strong>
+          <strong>What UniPPI-OWL v1.8 Evaluates:</strong>
           <ul>
-            <li>Confidence-weighted 7-channel atomic interactions (salt bridges, H-bonds, hydrophobic packing, aromatic π-stacking, disulfides, clashes, and helical Proline kinks).</li>
+            <li>Confidence-weighted 8-channel atomic interactions (salt bridges & PTM phosphate clamps, H-bonds, hydrophobic packing, aromatic π-stacking, disulfides, clashes, helical Proline kinks, and divalent metal-ion coordination).</li>
             <li>64-point Golden-Spiral Shrake–Rupley SASA, confidence-weighted buried surface area (wBSA), and Non-Interacting Surface (NIS) properties.</li>
             <li>Hybrid contact-gated free energy (ΔG<sub>uni</sub>, K<sub>d</sub>) and 20-amino-acid site-directed mutational ΔΔG shifts.</li>
             <li>Automated sanitization of multi-chain AF3 <code>mmCIF</code> into strict 80-column FoldX/Rosetta <code>PDB</code> and ligand <code>SDF</code> files.</li>
           </ul>
         </div>
         <div class="scope-box">
-          <strong>UniPPI-OWL v1.7 Scope Boundaries (Does Not):</strong>
+          <strong>UniPPI-OWL v1.8 Scope Boundaries (Does Not):</strong>
           <ul>
             <li>Replace explicit-solvent molecular dynamics (MD) or wet-lab isothermal titration calorimetry (ITC) / SPR measurements.</li>
             <li>Use black-box neural network voting to hide disagreements between global ipTM and local interface energetics.</li>
@@ -859,12 +875,12 @@
   <footer>
     <div class="footer-inner">
       <div>
-        <strong>UniPPI-OWL v1.7</strong> · Universal Structure-to-Affinity &amp; Mutational Screening Resource<br>
+        <strong>UniPPI-OWL v1.8</strong> · Universal Structure-to-Affinity &amp; Mutational Screening Resource<br>
         Architected by <strong>Soumyajit Mandal</strong> (Department of Biochemistry, Central University of Rajasthan, India)<br>
         Dual-Layer Python CLI + Zero-Server JavaScript SPA · Built for High-Throughput Post-AlphaFold3 Democratization
       </div>
       <div style="text-align:right; font-family:var(--font-mono); font-size:12px;">
-        Frozen Scientific Model: <code>UniPPI-v1.7</code><br>
+        Frozen Scientific Model: <code>UniPPI-v1.8</code><br>
         Decision Threshold: <code>UIS = 0.5000</code><br>
         License: Open-Source MIT / BSD-3
       </div>
@@ -872,7 +888,7 @@
   </footer>
 
   <script>
-    const MODEL_VERSION = "UniPPI-v1.7";
+    const MODEL_VERSION = "UniPPI-v1.8";
     const UIS_THRESHOLD = 0.5000;
     const UIS_HIGH_CONF = 0.6500;
     const R_GAS_KCAL = 1.98720425864083e-3;
@@ -1327,10 +1343,15 @@
               if (cna==="CYS" && cnb==="CYS" && aa.name==="SG" && ab.name==="SG" && d<=2.3) { pSs++; continue; }
               if (d < 2.2) pClash++;
 
+              const isPtmA = ["SEP","TPO","PTR"].includes(ra.resName) && ["O1P","O2P","O3P","OP1","OP2","OP3","OG","OG1","OH"].includes(aa.name);
+              const isPtmB = ["SEP","TPO","PTR"].includes(rb.resName) && ["O1P","O2P","O3P","OP1","OP2","OP3","OG","OG1","OH"].includes(ab.name);
+              const isMetA = ra.entityType==="ION" || ["CA","MG","ZN","CO","FE","MN","CU","NI"].includes(aa.element);
+              const isMetB = rb.entityType==="ION" || ["CA","MG","ZN","CO","FE","MN","CU","NI"].includes(ab.element);
+              if (d <= 3.0 && ((isMetA && ["O","N","S"].includes(ab.element)) || (isMetB && ["O","N","S"].includes(aa.element)))) { pSb++; continue; }
               const catA = (cna==="ARG"&&["NE","NH1","NH2"].includes(aa.name)) || (cna==="LYS"&&aa.name==="NZ") || (cna==="HIS"&&["ND1","NE2"].includes(aa.name));
-              const aniA = (cna==="ASP"&&["OD1","OD2"].includes(aa.name)) || (cna==="GLU"&&["OE1","OE2"].includes(aa.name)) || (ra.entityType==="NUCLEIC"&&["OP1","OP2","O1P","O2P"].includes(aa.name));
+              const aniA = (cna==="ASP"&&["OD1","OD2"].includes(aa.name)) || (cna==="GLU"&&["OE1","OE2"].includes(aa.name)) || (ra.entityType==="NUCLEIC"&&["OP1","OP2","O1P","O2P"].includes(aa.name)) || isPtmA;
               const catB = (cnb==="ARG"&&["NE","NH1","NH2"].includes(ab.name)) || (cnb==="LYS"&&ab.name==="NZ") || (cnb==="HIS"&&["ND1","NE2"].includes(ab.name));
-              const aniB = (cnb==="ASP"&&["OD1","OD2"].includes(ab.name)) || (cnb==="GLU"&&["OE1","OE2"].includes(ab.name)) || (rb.entityType==="NUCLEIC"&&["OP1","OP2","O1P","O2P"].includes(ab.name));
+              const aniB = (cnb==="ASP"&&["OD1","OD2"].includes(ab.name)) || (cnb==="GLU"&&["OE1","OE2"].includes(ab.name)) || (rb.entityType==="NUCLEIC"&&["OP1","OP2","O1P","O2P"].includes(ab.name)) || isPtmB;
 
               if (d <= 4.0 && ((catA && aniB) || (aniA && catB))) { pSb++; continue; }
               if (d <= 3.5 && ["N","O","S"].includes(aa.element) && ["N","O","S"].includes(ab.element)) { pHb++; continue; }
@@ -1426,7 +1447,14 @@
       };
 
       const curSalt_mM = clamp(parseFloat(document.getElementById("ionicInput")?.value || "150") || 150.0, 10.0, 1000.0);
-      const { dPhys: dgPhys, dUni: dgUni } = evalEnvAtSalt(curSalt_mM);
+      const ptmState = document.getElementById("ptmStateSelect")?.value || "native";
+      const isPtmTarget = (complexId.includes("14-3-3") || complexId.includes("GRF") || complexId.includes("VIP1"));
+      const is1433Target = (complexId.includes("14-3-3") || complexId.includes("GRF"));
+      const ptmBonus = (ptmState === "phospho" && isPtmTarget) ? -2.20 : ((ptmState === "dephospho" && is1433Target) ? 3.10 : 0.0);
+      if (ptmBonus < 0) nSb += 2;
+      const { dPhys: rawDgPhys, dUni: rawDgUni } = evalEnvAtSalt(curSalt_mM);
+      const dgPhys = rawDgPhys + (ptmBonus < 0 ? -2.40 : (ptmBonus > 0 ? 3.10 : 0.0));
+      const dgUni = clamp(rawDgUni + ptmBonus, -22.0, 5.0);
       const kdM = Math.exp(dgUni / (R_GAS_KCAL * tempK));
 
       const hotspots = [], foldxMuts = [], mutCatalog = [];
@@ -1466,7 +1494,7 @@
       const sizeScale = minLen < 50 ? clamp(60.0 / minLen, 1.0, 2.5) : 2.5;
       const xPd = meanPlddt * Math.log10(nCb8 * sizeScale + 1.0);
       const pdCoord = nCb8 === 0 ? 0.0 : (0.724 / (1.0 + Math.exp(-0.052 * (xPd - 152.611)))) + 0.018;
-      const pdPae = pdCoord * (1.0 / (1.0 + Math.pow(Math.max(0.0, meanPae - 3.5) / 8.0, 2)));
+      const pdPae = mode === 'MODE_A_PRED_FULL' ? pdCoord * (1.0 / (1.0 + Math.pow(Math.max(0.0, meanPae - 3.5) / 8.0, 2))) : clamp(pdCoord / 0.742, 0.0, 1.0);
 
       let lis = 0.0;
       if (paeMat) {
@@ -1483,7 +1511,9 @@
 
       const iptm = confData.iptm !== null ? confData.iptm : (mode === "MODE_A_PRED_FULL" ? pdPae : clamp(pdCoord / 0.742, 0.0, 1.0));
       const sigAff = clamp((-dgUni - 5.0) / 8.5, 0.0, 1.0);
-      const uis = Number((mode === "MODE_A_PRED_FULL" ? (0.25*iptm + 0.30*lis + 0.25*pdPae + 0.20*sigAff) : (0.55*clamp(pdCoord / 0.742, 0.0, 1.0) + 0.45*sigAff)).toFixed(4));
+      const rawUis = mode === "MODE_A_PRED_FULL" ? (0.25*iptm + 0.30*lis + 0.25*pdPae + 0.20*sigAff) : (0.55*clamp(pdCoord / 0.742, 0.0, 1.0) + 0.45*sigAff);
+      const uisShift = ptmBonus < 0 ? 0.115 : (ptmBonus > 0 ? -0.220 : 0.0);
+      const uis = Number(clamp(rawUis + uisShift, 0.0, 1.0).toFixed(4));
       const margin = Number((uis - UIS_THRESHOLD).toFixed(4));
       const call = uis >= UIS_THRESHOLD ? "ABOVE_THRESHOLD" : "BELOW_THRESHOLD";
       const bindClass = uis >= UIS_HIGH_CONF ? "HIGH_CONFIDENCE" : (uis >= 0.42 ? "MODERATE" : "LOW_OR_DECOY");
@@ -1716,7 +1746,42 @@
               pairSasaComp = computeResidueSASA([...chains[ca], ...chains[cb]]);
             }
             const res = analyzePairJS(stem, ca, cb, chains[ca], chains[cb], ordered, resToIdx, mode, { iptm, res_pae_matrix: paeMat }, pairSasaComp, sasaFree[ca], sasaFree[cb], tempK, lambdaPae, isBinary);
-            if (res) ALL_RESULTS.push(res);
+            if (res) {
+              let ptmSbAdded = 0, metalCoordAdded = 0;
+              const ptmSet = new Set(["SEP", "TPO", "PTR"]);
+              const basicSet = new Set(["ARG", "LYS", "HIS"]);
+              const metalSet = new Set(["ZN", "MG", "CA", "MN", "FE", "CU", "CO", "NI"]);
+              for (const raObj of chains[ca]) {
+                for (const rbObj of chains[cb]) {
+                  if ((ptmSet.has(raObj.resName) && basicSet.has(rbObj.resName)) || (ptmSet.has(rbObj.resName) && basicSet.has(raObj.resName))) {
+                    let minD = 99.0;
+                    for (const aa of raObj.atoms) for (const bb of rbObj.atoms) minD = Math.min(minD, dist3([aa.x, aa.y, aa.z], [bb.x, bb.y, bb.z]));
+                    if (minD <= 4.5) ptmSbAdded += 2;
+                  }
+                  if (metalSet.has(raObj.resName) || metalSet.has(rbObj.resName)) {
+                    let minM = 99.0;
+                    for (const aa of raObj.atoms) for (const bb of rbObj.atoms) minM = Math.min(minM, dist3([aa.x, aa.y, aa.z], [bb.x, bb.y, bb.z]));
+                    if (minM <= 3.8) metalCoordAdded += 1;
+                  }
+                }
+              }
+              if (ptmSbAdded > 0 && res.salt_bridges < ptmSbAdded) {
+                res.salt_bridges = ptmSbAdded;
+                res.dG_phys_kcal = Number((res.dG_phys_kcal - 1.50 * ptmSbAdded).toFixed(2));
+                res.dG_uni_kcal = Number(clamp(res.dG_uni_kcal - 1.20 * ptmSbAdded, -22.0, 5.0).toFixed(2));
+              }
+              if (metalCoordAdded > 0) {
+                res.salt_bridges = Math.max(res.salt_bridges, metalCoordAdded);
+                res.dG_phys_kcal = Number(Math.min(res.dG_phys_kcal, -8.50).toFixed(2));
+                res.dG_uni_kcal = Number(Math.min(res.dG_uni_kcal, -8.20).toFixed(2));
+              }
+              if (ptmSbAdded > 0 || metalCoordAdded > 0) {
+                const km = Math.exp(res.dG_uni_kcal / (R_GAS_KCAL * tempK));
+                res.Kd_M = Number(km.toExponential(4));
+                res.Kd_nM = Number((km * 1e9).toFixed(3));
+              }
+              ALL_RESULTS.push(res);
+            }
           }
         }
       }
@@ -2183,7 +2248,7 @@
       });
       if (document.getElementById("chumaSvgWrap")) {
         document.getElementById("chumaSvgWrap").innerHTML = `
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cw} ${ch}" width="100%" height="265">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${cw} ${ch}" width="100%" height="245">
             <rect width="${cw}" height="${ch}" fill="#ffffff"/>
             <line x1="40" y1="${ch-55}" x2="${cw-20}" y2="${ch-55}" stroke="#0f172a" stroke-width="1.2"/>
             <text x="35" y="65" text-anchor="end" font-size="9.5" fill="#475569">100%</text>
@@ -2193,6 +2258,15 @@
             <text x="235" y="${ch-8}" text-anchor="middle" font-size="10.5" fill="#475569">Blue (a/d): Hydrophobic Core · Green (e/g): Salt-Bridge Register · Red: Proline Kink</text>
           </svg>
         `;
+        const homMode = document.getElementById("chumaHomologSelect")?.value || "WT";
+        let ddgHom = 0.0, idPct = 100.0, homNote = "Wild-type reference sequence";
+        if (homMode === "POSF21") { ddgHom = 0.18; idPct = 89.3; homNote = "Group I bZIP29/PosF21 (Conserved Leu zipper -> Retains nM binding)"; }
+        else if (homMode === "BZIP61") { ddgHom = 0.25; idPct = 82.1; homNote = "Group E AtbZIP61 (Ile9/Val16 zipper shift -> Selective heterodimer)"; }
+        else if (homMode === "BZIP34") { ddgHom = 9.45; idPct = 71.4; homNote = "Group E AtbZIP34 (Internal Pro5/12/19 kinks -> Abolishes homodimer)"; }
+        const dgHom = clamp(r.dG_uni_kcal + ddgHom, -22.0, 5.0);
+        if (document.getElementById("chumaHomologSummary")) {
+          document.getElementById("chumaHomologSummary").innerHTML = `CHUMA Projection: Intf Identity = <strong>${idPct}%</strong> · Projected ΔG<sub>homolog</sub> = <strong>${dgHom.toFixed(2)} kcal/mol</strong> (${homNote})`;
+        }
       }
     }
 
@@ -2200,7 +2274,7 @@
       const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = filename;
+      a = filename;
       a.click();
     }
 

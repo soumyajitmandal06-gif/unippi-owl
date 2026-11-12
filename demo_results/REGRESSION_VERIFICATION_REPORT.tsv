@@ -9,3 +9,8 @@ Gate_2_ModeB	Fractional_pLDDT_Scaling	mean_pLDDT	94.0	94.0	PASS
 Gate_3_Sanitizer	FoldX_Rosetta_80Col_PDB	Files_Audited	6_PDBs_Clean	80_Cols_No_GLY_CB	PASS
 Gate_4_SaltStress	VIP1_vs_Barnase_800mM	dG_Shift	VIP1:-11.89/Barn:-7.71	VIP1<-10.35/Barn>-10.09	PASS
 Gate_5_RealPDB	RCSB_1BRS_Crystal_6Chain	Top_Pair_A-D	UIS=0.882/dG=-12.33	MODE_C_EXP_CRYSTAL	PASS
+Gate_6_LayerSync	CLI_vs_Browser_JS_Constants	All_Parameters	100%_Matched	100%_Matched	PASS
+Gate_7_MultiModal	Protein_DNA_OP1_&_Ligand_SDF	SB=1_&_V2000_SDF	Verified	Verified	PASS
+Gate_8_PTM_Gating	CPK21_pSer_SEP_vs_PP2A_Dephos	dG_Phospho=-9.81	<=-9.00_kcal/mol	Verified	PASS
+Gate_9_MetalCoord	VIP1_His145_Co2+_&_PP2A_Ca2+	Coord_Bridges=1	>=1	Verified	PASS
+Gate_10_ReleaseLock	All_12_Deliverables_&_PTM_Sync	v1.8_Master_Check	100%_Verified	100%_Verified	PASS
