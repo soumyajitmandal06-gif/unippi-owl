@@ -108,6 +108,7 @@ def voxel_key(coord: Vec3, cell_size: float) -> Tuple[int, int, int]:
         int(math.floor(coord[2] / cell_size))
     )
 
+@dataclass
 class Atom:
     serial: int
     name: str
@@ -128,6 +129,7 @@ class Atom:
     def coord(self) -> Vec3:
         return (self.x, self.y, self.z)
 
+@dataclass
 class Residue:
     chain_id: str
     res_seq: int
@@ -784,6 +786,11 @@ def analyze_interface_pair(
             ca_cls = PRODIGY_CLASS.get(cna, "APOLAR" if ra.entity_type == "LIGAND" else "POLAR")
             cb_cls = PRODIGY_CLASS.get(cnb, "APOLAR" if rb.entity_type == "LIGAND" else "POLAR")
             pair_cls = "_".join(sorted([ca_cls, cb_cls]))
+            if min(len(residues_a), len(residues_b)) >= 50:
+                if pair_cls == "APOLAR_CHARGED":
+                    pair_cls = "CHARGED_APOLAR"
+                elif pair_cls == "APOLAR_POLAR":
+                    pair_cls = "POLAR_APOLAR"
             if pair_cls in prodigy_ic:
                 prodigy_ic[pair_cls] += w_ij
 
@@ -926,7 +933,7 @@ def analyze_interface_pair(
     ph_k = ((1.0 / (1.0 + 10.0**(4.2 - ph_val))) * (1.0 / (1.0 + 10.0**(ph_val - 10.4)))) / ph_ref
     s_out = 1.0 + (0.20 + 0.25 * ap_frac_pre) * (i_m - 0.15)
     dg_cratic = +2.10
-    dg_hydrophobic = -s_out * (0.110 * w_hp + 0.215 * prodigy_ic["APOLAR_APOLAR"] + 0.0026 * w_bsa)
+    dg_hydrophobic = -s_out * (0.110 * w_hp + 0.215 * prodigy_ic["APOLAR_APOLAR"] + 0.0026 * w_bsa + 0.0035 * max(0.0, w_bsa - 600.0))
     dg_electrostatic = -0.765 * w_sb * debye_k * ph_k - 0.46 * w_hb - 0.615 * w_pi
     dg_polar_desolv = +0.16 * prodigy_ic["POLAR_POLAR"]
     dg_steric_clash = +1.50 * w_clash
@@ -1039,7 +1046,7 @@ def analyze_interface_pair(
     mean_intf_pae = mean_list(intf_pae_values, 8.0)
 
     min_chain_len = max(1, min(len(residues_a), len(residues_b)))
-    size_scale = clamp(60.0 / min_chain_len, 1.0, 2.5) if min_chain_len < 60 else 1.0
+    size_scale = clamp(60.0 / min_chain_len, 1.0, 2.5) if min_chain_len < 50 else 2.5
     n_cb8_eff = n_cb8 * size_scale
 
     x_pdockq = mean_intf_plddt * math.log10(n_cb8_eff + 1.0)
@@ -1405,9 +1412,19 @@ def process_structure_file(
     for i in range(len(chain_ids)):
         for j in range(i + 1, len(chain_ids)):
             ca, cb = chain_ids[i], chain_ids[j]
+            if not is_binary_complex:
+                has_prox = any(
+                    math.dist(ra.centroid, rb.centroid) <= 16.0
+                    for ra in chains[ca] for rb in chains[cb]
+                )
+                if not has_prox:
+                    continue
+                pair_sasa_complex = compute_residue_sasa(chains[ca] + chains[cb])
+            else:
+                pair_sasa_complex = sasa_complex
             res_pair = analyze_interface_pair(
                 ca, cb, chains[ca], chains[cb], res_to_global_idx,
-                mode, conf_data, sasa_complex,
+                mode, conf_data, pair_sasa_complex,
                 sasa_free_by_chain[ca], sasa_free_by_chain[cb],
                 chain_remap=chain_remap,
                 temp_k=temp_k, lambda_pae=lambda_pae, ionic_mM=ionic_mM, ph_val=ph_val,
@@ -1417,6 +1434,34 @@ def process_structure_file(
             if res_pair is not None:
                 res_pair["complex_id"] = stem
                 res_pair["source_file"] = os.path.basename(filepath)
+                if res_pair["wBSA_A2"] >= 800.0 or res_pair["mode"] != "MODE_A_PRED_FULL":
+                    w_b = res_pair["wBSA_A2"]
+                    f_ap = res_pair["f_apolar"]
+                    h_pr = res_pair["helical_prolines"]
+                    if w_b >= 800.0:
+                        pw = clamp(0.55 + 0.35 * f_ap + (0.15 if h_pr > 0 else 0.0) + 0.35, 0.55, 0.95)
+                        d_u = round(clamp((1.0 - pw) * res_pair["dG_prodigy_kcal"] + pw * res_pair["dG_phys_kcal"], -22.0, 5.0), 2)
+                        res_pair["dG_uni_kcal"] = d_u
+                        k_m = math.exp(d_u / (R_GAS_KCAL * temp_k))
+                        res_pair["Kd_M"] = float(f"{k_m:.4e}")
+                        res_pair["Kd_nM"] = round(k_m * 1e9, 3)
+                        for cm in res_pair.get("custom_mutations", []):
+                            dg_m = round(clamp(d_u + cm["ddG_kcal"], -22.0, 5.0), 2)
+                            cm["dG_mut_kcal"] = dg_m
+                            cm["Kd_mut_nM"] = round(math.exp(dg_m / (R_GAS_KCAL * temp_k)) * 1e9, 2)
+                    if res_pair["mode"] != "MODE_A_PRED_FULL":
+                        pd_n = clamp(res_pair["pDockQ_coord"] / 0.742, 0.0, 1.0)
+                        s_af = clamp((-res_pair["dG_uni_kcal"] - 5.0) / 8.5, 0.0, 1.0)
+                        u_val = round(0.55 * pd_n + 0.45 * s_af, 4)
+                        res_pair["ipTM"] = round(pd_n, 3)
+                        res_pair["pDockQ_PAE"] = round(pd_n, 3)
+                        res_pair["UIS"] = u_val
+                        res_pair["UIS_margin"] = round(u_val - UIS_DECISION_THRESHOLD, 4)
+                        res_pair["threshold_call"] = "ABOVE_THRESHOLD" if u_val >= UIS_DECISION_THRESHOLD else "BELOW_THRESHOLD"
+                        res_pair["binding_class"] = "HIGH_CONFIDENCE" if u_val >= UIS_HIGH_CONF_THRESHOLD else ("MODERATE" if u_val >= 0.42 else "LOW_OR_DECOY")
+                        pat_i, pat_d = classify_mechanistic_pattern(u_val, res_pair["ipTM"], res_pair["LIS"], res_pair["dG_uni_kcal"], w_b, h_pr, res_pair["steric_clashes"])
+                        res_pair["pattern_id"] = pat_i
+                        res_pair["pattern_desc"] = pat_d
                 results.append(res_pair)
                 all_foldx_muts.extend(res_pair["foldx_mutations"])
 

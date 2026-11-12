@@ -1,0 +1,11 @@
+Gate	Test_Name	Target	Observed	Expected	Status
+Gate_1_Parity	1_VIP1_Homodimer_Positive_model_0	UIS/dG/Pattern	0.777/-10.35/Pattern A	0.777/-10.35/Pattern A	PASS
+Gate_1_Parity	3_Barnase_Barstar_Electrostatic_Pos_model_0	UIS/dG/Pattern	0.771/-10.09/Pattern A	0.771/-10.09/Pattern A	PASS
+Gate_1_Parity	2_VIP1_bZIP61_GroupE_Positive_model_0	UIS/dG/Pattern	0.732/-10.10/Pattern A	0.732/-10.10/Pattern A	PASS
+Gate_1_Parity	4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_model_0	UIS/dG/Pattern	0.609/-7.61/Pattern B	0.609/-7.61/Pattern B	PASS
+Gate_1_Parity	5_bZIP34_Proline_Homodimer_Negative_model_0	UIS/dG/Pattern	0.120/5.00/Pattern C	0.120/5.00/Pattern C	PASS
+Gate_1_Parity	6_VIP1_IDR_Hallucination_Decoy_model_0	UIS/dG/Pattern	0.061/2.10/Pattern D	0.061/2.10/Pattern D	PASS
+Gate_2_ModeB	Fractional_pLDDT_Scaling	mean_pLDDT	94.0	94.0	PASS
+Gate_3_Sanitizer	FoldX_Rosetta_80Col_PDB	Files_Audited	6_PDBs_Clean	80_Cols_No_GLY_CB	PASS
+Gate_4_SaltStress	VIP1_vs_Barnase_800mM	dG_Shift	VIP1:-11.89/Barn:-7.71	VIP1<-10.35/Barn>-10.09	PASS
+Gate_5_RealPDB	RCSB_1BRS_Crystal_6Chain	Top_Pair_A-D	UIS=0.882/dG=-12.33	MODE_C_EXP_CRYSTAL	PASS

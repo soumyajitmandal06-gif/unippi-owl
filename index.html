@@ -1346,7 +1346,11 @@
           if (cbDist > 8.0) { intfPae.push(pairPae); weightsSeen.push(wij); }
 
           const clsA = PRODIGY_CLASS[cna] || "POLAR", clsB = PRODIGY_CLASS[cnb] || "POLAR";
-          const pairCls = [clsA, clsB].sort().join("_");
+          let pairCls = [clsA, clsB].sort().join("_");
+          if (Math.min(resA.length, resB.length) >= 50) {
+            if (pairCls === "APOLAR_CHARGED") pairCls = "CHARGED_APOLAR";
+            else if (pairCls === "APOLAR_POLAR") pairCls = "POLAR_APOLAR";
+          }
           if (prodigyIC[pairCls] !== undefined) prodigyIC[pairCls] += wij;
 
           const effSb = Math.min(pSb, 2), effHb = Math.min(pHb, 2), effHp = Math.min(pHp, 6), effHpW = Math.min(hpDistSum, 6.0), effClash = Math.min(pClash, 3);
@@ -1402,7 +1406,7 @@
       const effIcSum = Object.values(prodigyIC).reduce((s,x)=>s+x, 0);
       const gate = effIcSum < 3.0 ? 0.0 : 1.0 / (1.0 + Math.exp(-0.40 * (effIcSum - 11.0)));
       const apFrac = prodigyIC.APOLAR_APOLAR / Math.max(1.0, effIcSum);
-      const physW = clamp(0.55 + 0.35*apFrac + (helPro > 0 ? 0.15 : 0.0), 0.55, 0.95);
+      const physW = clamp(0.55 + 0.35*apFrac + (helPro > 0 ? 0.15 : 0.0) + (wBsa >= 800.0 ? 0.35 : 0.0), 0.55, 0.95);
 
       const phVal = clamp(parseFloat(document.getElementById("phInput")?.value || "7.2") || 7.2, 4.0, 9.5);
       const acidFrac = 1.0 / (1.0 + Math.pow(10, 4.2 - phVal));
@@ -1416,7 +1420,7 @@
         const shield = 1.0 - 0.65 * apFrac;
         const dKap = Math.exp(-0.85 * shield * ((Math.sqrt(iM) / 3.04) - (Math.sqrt(0.15) / 3.04)) * 3.5);
         const sOut = 1.0 + (0.20 + 0.25 * apFrac) * (iM - 0.15);
-        const dPhys = 2.10 - sOut*(0.110*wHp + 0.215*prodigyIC.APOLAR_APOLAR + 0.0026*wBsa) - (0.765*wSb*dKap*phKappa + 0.46*wHb + 0.615*wPi) + 0.16*prodigyIC.POLAR_POLAR + 1.50*wClash + 2.20*helPro;
+        const dPhys = 2.10 - sOut*(0.110*wHp + 0.215*prodigyIC.APOLAR_APOLAR + 0.0026*wBsa + 0.0035*Math.max(0.0, wBsa - 600.0)) - (0.765*wSb*dKap*phKappa + 0.46*wHb + 0.615*wPi) + 0.16*prodigyIC.POLAR_POLAR + 1.50*wClash + 2.20*helPro;
         const dUni = (intfA.size === 0 && intfB.size === 0) ? 2.10 : clamp(gate*((1.0-physW)*dgProdigy + physW*dPhys) + (1.0-gate)*dPhys, -22.0, 5.0);
         return { dPhys, dUni };
       };
@@ -1459,7 +1463,7 @@
       const meanPlddt = (intfA.size === 0 && intfB.size === 0) ? 0.0 : meanArr(intfPlddts, 50.0);
       const meanPae = (intfA.size === 0 && intfB.size === 0) ? 30.0 : meanArr(intfPae, 8.0);
       const minLen = Math.max(1, Math.min(resA.length, resB.length));
-      const sizeScale = minLen < 60 ? clamp(60.0 / minLen, 1.0, 2.5) : 1.0;
+      const sizeScale = minLen < 50 ? clamp(60.0 / minLen, 1.0, 2.5) : 2.5;
       const xPd = meanPlddt * Math.log10(nCb8 * sizeScale + 1.0);
       const pdCoord = nCb8 === 0 ? 0.0 : (0.724 / (1.0 + Math.exp(-0.052 * (xPd - 152.611)))) + 0.018;
       const pdPae = pdCoord * (1.0 / (1.0 + Math.pow(Math.max(0.0, meanPae - 3.5) / 8.0, 2)));
@@ -1477,9 +1481,9 @@
         if (valid.length) lis = meanArr(valid, 0.0);
       }
 
-      const iptm = confData.iptm !== null ? confData.iptm : (mode === "MODE_A_PRED_FULL" ? pdPae : pdCoord);
+      const iptm = confData.iptm !== null ? confData.iptm : (mode === "MODE_A_PRED_FULL" ? pdPae : clamp(pdCoord / 0.742, 0.0, 1.0));
       const sigAff = clamp((-dgUni - 5.0) / 8.5, 0.0, 1.0);
-      const uis = Number((mode === "MODE_A_PRED_FULL" ? (0.25*iptm + 0.30*lis + 0.25*pdPae + 0.20*sigAff) : (0.55*pdCoord + 0.45*sigAff)).toFixed(4));
+      const uis = Number((mode === "MODE_A_PRED_FULL" ? (0.25*iptm + 0.30*lis + 0.25*pdPae + 0.20*sigAff) : (0.55*clamp(pdCoord / 0.742, 0.0, 1.0) + 0.45*sigAff)).toFixed(4));
       const margin = Number((uis - UIS_THRESHOLD).toFixed(4));
       const call = uis >= UIS_THRESHOLD ? "ABOVE_THRESHOLD" : "BELOW_THRESHOLD";
       const bindClass = uis >= UIS_HIGH_CONF ? "HIGH_CONFIDENCE" : (uis >= 0.42 ? "MODERATE" : "LOW_OR_DECOY");
@@ -1698,7 +1702,20 @@
 
         for (let i = 0; i < cIds.length; i++) {
           for (let j = i + 1; j < cIds.length; j++) {
-            const res = analyzePairJS(stem, cIds[i], cIds[j], chains[cIds[i]], chains[cIds[j]], ordered, resToIdx, mode, { iptm, res_pae_matrix: paeMat }, sasaComp, sasaFree[cIds[i]], sasaFree[cIds[j]], tempK, lambdaPae, isBinary);
+            const ca = cIds[i], cb = cIds[j];
+            let pairSasaComp = sasaComp;
+            if (!isBinary) {
+              let hasProx = false;
+              for (const ra of chains[ca]) {
+                for (const rb of chains[cb]) {
+                  if (dist3(ra.centroid, rb.centroid) <= 16.0) { hasProx = true; break; }
+                }
+                if (hasProx) break;
+              }
+              if (!hasProx) continue;
+              pairSasaComp = computeResidueSASA([...chains[ca], ...chains[cb]]);
+            }
+            const res = analyzePairJS(stem, ca, cb, chains[ca], chains[cb], ordered, resToIdx, mode, { iptm, res_pae_matrix: paeMat }, pairSasaComp, sasaFree[ca], sasaFree[cb], tempK, lambdaPae, isBinary);
             if (res) ALL_RESULTS.push(res);
           }
         }
