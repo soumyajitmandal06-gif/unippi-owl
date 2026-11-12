@@ -239,7 +239,7 @@ def main():
             txt_rf = p_rf.read_text(encoding="utf-8")
             assert "\u00a0" not in txt_rf, f"Non-breaking space found in {rf}"
     src_html = Path("index.html").read_text(encoding="utf-8")
-    assert "evalEnvAtSalt(s_mM).dUni + ptmBonus" in src_html and "ddG_Ala_kcal" in src_html and "let pPi = 0;" in src_html and "const uisShift =" in src_html and "return -1.85;" in src_html and "cdnjs.cloudflare.com" in src_html and ".download" not in src_html, "index.html must use clean CDN script, not Chrome snapshot path!"
+    assert "evalEnvAtSalt(s_mM).dUni + ptmBonus" in src_html and "ddG_Ala_kcal" in src_html and "let pPi = 0;" in src_html and "const uisShift =" in src_html and "return -1.85;" in src_html and "cdnjs.cloudflare.com" in src_html and ".js.download" not in src_html and "a.download = filename;" in src_html and "(-rawDgUni - 5.0)" in src_html, "index.html must use clean CDN script, not Chrome snapshot path!"
     assert "return -1.85;" in src_html and "-2.20" in src_html and "3.10" in src_html and 'value="dephospho"' in src_html and "8-channel atomic interactions" in src_html, "index.html parameter orthogonality check failed!"
     report_lines.append("Gate_10_ReleaseLock\tAll_12_Deliverables_&_PTM_Sync\tv1.8_Master_Check\t100%_Verified\t100%_Verified\tPASS")
     print("[PASS] Gate 10: All 12 release files, CDN links, and CLI-to-Browser PTM (-2.20 kcal/mol) sync verified.")

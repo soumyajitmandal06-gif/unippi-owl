@@ -1520,7 +1520,7 @@
       }
 
       const iptm = confData.iptm !== null ? confData.iptm : (mode === "MODE_A_PRED_FULL" ? pdPae : clamp(pdCoord / 0.742, 0.0, 1.0));
-      const sigAff = clamp((-dgUni - 5.0) / 8.5, 0.0, 1.0);
+      const sigAff = clamp((-rawDgUni - 5.0) / 8.5, 0.0, 1.0);
       const rawUis = mode === "MODE_A_PRED_FULL" ? (0.25*iptm + 0.30*lis + 0.25*pdPae + 0.20*sigAff) : (0.55*clamp(pdCoord / 0.742, 0.0, 1.0) + 0.45*sigAff);
       const uisShift = ptmBonus < 0 ? 0.115 : (ptmBonus > 0 ? -0.220 : 0.0);
       const uis = Number(clamp(rawUis + uisShift, 0.0, 1.0).toFixed(4));
@@ -2304,10 +2304,14 @@
 
     function downloadTextFile(filename, content) {
       const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a = filename;
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 100);
     }
 
     function downloadMasterCSV() {
