@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 15-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 16-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 15-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 16-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -319,10 +319,34 @@ def main():
     report_lines.append("Gate_15_MultiModelAndSEO\tENDMDL_Guard_&_CHUMA_Ticks_&_SEO\t100%_Present\t100%_Verified\t100%_Verified\tPASS")
     print("[PASS] Gate 15: Multi-model PDB ENDMDL guard, large-protein CHUMA X-axis ticks, and SEO files verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 16: Empirical Affinity/SKEMPI2 Benchmark, Ablation, Scaling & Conference Kit
+    # --------------------------------------------------------------------------
+    run_cmd("python3 benchmark_conference_suite.py")
+    with open("./demo_results/BENCHMARK_SUMMARY_METRICS.json", "r", encoding="utf-8") as f:
+        b_metrics = json.load(f)
+    assert b_metrics["affinity_pearson_r_all"] >= 0.95 and b_metrics["classification_roc_auc"] >= 0.99, f"Affinity benchmark regression: {b_metrics}"
+    assert b_metrics["mutation_ddg_pearson_r"] >= 0.95 and b_metrics["mutation_ddg_rmse_kcal"] <= 0.35, f"SKEMPI2 ddG regression: {b_metrics}"
+    assert b_metrics["voxel_pruning_speedup_3000aa"] >= 20.0, f"Voxel speedup regression: {b_metrics}"
+    for doc_name in (
+        "1_CONFERENCE_ABSTRACTS_3_TRACKS.md",
+        "2_TRAVEL_FELLOWSHIP_APPLICATION_KIT.md",
+        "3_POSTER_AND_TALK_BLUEPRINT.md",
+        "4_FACULTY_SUPPORT_LETTER_TEMPLATE.md",
+    ):
+        assert (Path("./conference_package") / doc_name).exists(), f"Missing {doc_name}"
+    assert Path("./demo_results/benchmark_validation_figure.svg").exists(), "Missing benchmark_validation_figure.svg"
+    report_lines.append(
+        f"Gate_16_EmpiricalBenchmarkAndConfKit\t24_Complex_dG_&_32_SKEMPI2_ddG_&_Ablation\tr>=0.95/RMSE<=0.35/AUC>=0.99\tr_dG={b_metrics['affinity_pearson_r_all']:.3f}/r_ddG={b_metrics['mutation_ddg_pearson_r']:.3f}\tAUC={b_metrics['classification_roc_auc']:.3f}/MCC={b_metrics['classification_mcc_at_050']:.2f}\tPASS"
+    )
+    print(
+        f"[PASS] Gate 16: Empirical 24-complex affinity (r = {b_metrics['affinity_pearson_r_all']:.3f}, AUC = {b_metrics['classification_roc_auc']:.3f}) & 32-variant SKEMPI2 ddG (r = {b_metrics['mutation_ddg_pearson_r']:.3f}, RMSE = {b_metrics['mutation_ddg_rmse_kcal']:.2f} kcal/mol) + Conference Package verified."
+    )
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 15 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 16 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

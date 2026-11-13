@@ -1,0 +1,82 @@
+[
+  {
+    "name": "AtVIP1_AtbZIP51_Homodimer_Native",
+    "modelSeeds": [
+      101
+    ],
+    "sequences": [
+      {
+        "proteinChain": {
+          "sequence": "MEGGGRGPNLDFDFLLGGPGGSGGLFGGNDPFSLDGLSDDLLGGLGSPVSSDSETERRKRKRSNRESARRSRRRKQAQATELERKVQTLKTEATTLSAQLTLLQRDVAGLVAENKKLRLRLQAL",
+          "count": 2
+        }
+      }
+    ]
+  },
+  {
+    "name": "AtVIP1_AtbZIP61_GroupE_Heterodimer",
+    "modelSeeds": [
+      102
+    ],
+    "sequences": [
+      {
+        "proteinChain": {
+          "sequence": "ERRKRKRSNRESARRSRRRKQAQATELERKVQTLKTEATTLSAQLTLLQRDVAGLVAENKKLRLRLQAL",
+          "count": 1
+        }
+      },
+      {
+        "proteinChain": {
+          "sequence": "DPKKRKRANRESARRSRLRKQAECEELQKKVESLSSEANSLVAQLTLLQKEVAGLVAENKKLRLRLQAL",
+          "count": 1
+        }
+      }
+    ]
+  },
+  {
+    "name": "AtbZIP34_GroupE_ProlineKink_Homodimer_NegativeControl",
+    "modelSeeds": [
+      103
+    ],
+    "sequences": [
+      {
+        "proteinChain": {
+          "sequence": "DPKKRKRANRESARRSRLRKQAECEELQKKVEPISSEANPLVAQLTPLQKEVAGLVAENKKLRLRLQAL",
+          "count": 2
+        }
+      }
+    ]
+  },
+  {
+    "name": "AtVIP1_pSer115_GRF6_14-3-3_PhosphoLock_Complex",
+    "modelSeeds": [
+      104
+    ],
+    "sequences": [
+      {
+        "proteinChain": {
+          "sequence": "MREENVYMAKLAEQAERYEEMVEFMEKVAKTVDSEELTVEERNLLSVAYKNVIGARRASWRIISSIEQKEESRGNEDHVAIIKEYRSRIETELSKICDGILKLLDSRLIPAAASGDSKVFYLKMKGDYHRYLAEFKTGQERKDAAENTMVAYKAAQDIALAELAPTHPIRLGLALNFSVFYYEILNSPDRACNLAKQAFDEAIAELDTLGEESYKDSTLIMQLLRDNLTLWTSDMQDDGADEIKEAAAPKPTEEQQ",
+          "count": 1
+        }
+      },
+      {
+        "proteinChain": {
+          "sequence": "SGSGSRKPSPPPVSERRKRKRSNRESARRSRRRKQAQATELERKVQTLKTEATTLSAQLTLLQRDVAGLVAENKKLRLRLQAL",
+          "count": 1,
+          "modifications": [
+            {
+              "ptmType": "CCD_SEP",
+              "ptmPosition": 9
+            }
+          ]
+        }
+      },
+      {
+        "ion": {
+          "ion": "MG",
+          "count": 1
+        }
+      }
+    ]
+  }
+]

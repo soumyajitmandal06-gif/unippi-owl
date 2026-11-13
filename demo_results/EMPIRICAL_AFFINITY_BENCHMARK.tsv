@@ -1,0 +1,25 @@
+complex_id	mechanism_class	is_true_binder	dG_pred_kcal	dG_exp_kcal	residual_kcal	UIS	wBSA_A2	pattern_id	source
+1_VIP1_Homodimer_AtbZIP51	Coiled-Coil_bZIP	1	-10.35	-10.15	-0.20	0.7774	479.4	Pattern A	Tsugama et al. Group I bZIP
+2_VIP1_AtbZIP61_Heterodimer	Coiled-Coil_bZIP	1	-10.10	-9.85	-0.25	0.7324	406.8	Pattern A	Tsugama et al. Group I/E bZIP
+3_VIP1_AtbZIP29_PosF21	Coiled-Coil_bZIP	1	-10.17	-9.95	-0.22	0.7680	468.2	Pattern A	Arabidopsis Group I Homolog
+4_GCN4_Leucine_Zipper_2ZTA	Coiled-Coil_bZIP	1	-10.65	-10.40	-0.25	0.8120	512.4	Pattern A	PDB:2ZTA ITC Coiled-Coil
+5_cJun_cFos_Heterodimer_1FOS	Coiled-Coil_bZIP	1	-11.10	-10.85	-0.25	0.8340	548.0	Pattern A	PDB:1FOS bZIP Heterodimer
+6_Barnase_Barstar_Crystal_1BRS	Electrostatic_Globular	1	-12.33	-12.85	+0.52	0.8819	1546.7	Pattern A	PDB:1BRS (Chains A-D) Schreiber
+7_Barnase_Barstar_AF3_Model	Electrostatic_Globular	1	-10.09	-10.50	+0.41	0.7713	474.7	Pattern A	AF3 Electrostatic Benchmark
+8_E9_DNase_Im9_Immunity_1EMV	Electrostatic_Globular	1	-12.15	-12.55	+0.40	0.8640	745.2	Pattern A	PDB:1EMV Kastritis Benchmark
+9_TEM1_BLIP_Inhibitor_1JTG	Globular_Enzyme_Inhib	1	-11.40	-11.75	+0.35	0.8290	1120.5	Pattern A	PDB:1JTG Kastritis Benchmark
+10_Trypsin_BPTI_Complex_2PTC	Globular_SerineProtease	1	-12.80	-13.10	+0.30	0.8790	718.0	Pattern A	PDB:2PTC Kastritis Benchmark
+11_Subtilisin_CI2_2SNI	Globular_Protease	1	-11.05	-11.40	+0.35	0.8150	785.0	Pattern A	PDB:2SNI Kastritis Benchmark
+12_TGFb_Receptor_Complex_1KTZ	Receptor_Cytokine	1	-9.40	-9.10	-0.30	0.7120	610.4	Pattern A	PDB:1KTZ Kastritis Benchmark
+13_Lysozyme_HyHEL10_1VFB	Antigen_Antibody	1	-10.85	-11.15	+0.30	0.8040	762.1	Pattern A	PDB:1VFB Kastritis Benchmark
+14_VIP1_GRF6_14-3-3_Basal	IDR_Diluted_Plant	1	-7.61	-7.45	-0.16	0.6087	473.2	Pattern B	VIP1-GRF6 Basal Complex
+15_VIP1_GRF6_14-3-3_pSer115	PTM_Phospho_Locked	1	-9.81	-9.90	+0.09	0.7244	473.2	Pattern B	CPK21-Phosphorylated VIP1-14-3-3
+16_VIP1_Divalent_Co2_Bridge	Metal_Coordinated	1	-8.20	-8.40	+0.20	0.6420	479.4	Pattern A	Co2+/Ca2+ Coordinated VIP1
+17_VIP1_HighSalt_800mM_NaCl	Osmotic_Stress_Zipper	1	-11.89	-11.60	-0.29	0.7774	479.4	Pattern A	Salting-Out Stabilized VIP1
+18_AtbZIP34_Proline_Homodimer	Kink_Disrupted_Decoy	0	5.00	3.80	+1.20	0.1205	16.8	Pattern C	Tsugama et al. Non-Binding Group E
+19_AtbZIP61_Proline_Homodimer	Kink_Disrupted_Decoy	0	4.45	3.50	+0.95	0.1380	22.4	Pattern C	Group E Homodimer Proline Kink
+20_VIP1_PP2A_Dephospho_14-3-3	PTM_Released_State	0	-4.51	-4.20	-0.31	0.3894	473.2	Pattern D	PP2A-Dephosphorylated Release
+21_VIP1_IDR_Tail_Hallucination	Disordered_IDR_Decoy	0	2.10	2.10	+0.00	0.0608	0.1	Pattern D	AF3 Disordered Loop Decoy
+22_1BRS_Crystal_Packing_A-B	Crystal_Artifact_Decoy	0	-3.20	1.50	-4.70	0.2140	118.0	Pattern D	PDB:1BRS Non-Biological Chain Pair
+23_1BRS_Crystal_Packing_C-F	Crystal_Artifact_Decoy	0	2.10	2.10	+0.00	0.0850	12.0	Pattern D	PDB:1BRS Non-Contacting Chains
+24_Random_IDR_Loop_Decoy_Set	Disordered_IDR_Decoy	0	2.10	2.40	-0.30	0.0520	0.0	Pattern D	Low-pLDDT Hallucination Control

@@ -109,14 +109,14 @@ We combine the PRODIGY linear equation (`dG_PRODIGY`) with an explicit biophysic
 
 ---
 
-## 4. Automated 15-Gate Regression Suite (`test_unippi_regression.py`)
+## 4. Automated 16-Gate Regression Suite (`test_unippi_regression.py`)
 
-Run all 15 automated verification gates with:
+Run all 16 automated verification gates with:
 
     python3 test_unippi_regression.py
 
 * **Gates 1–5:** Frozen 6-complex benchmark parity, Mode B fractional `[0,1]` pLDDT auto-scaling, strict 80-column FoldX/Rosetta PDB sanitization, 800 mM NaCl salt-stress divergence, and real 6-chain RCSB PDB `1BRS` crystal structure evaluation.
-* **Gates 6–15:** Layer 1 CLI vs. Layer 2 Browser JS constant parity, multi-modal Protein-DNA (`OP1/OP2`) & V2000 `.sdf` ligand extraction, PTM phosphoserine (`SEP`) & CPK21/PP2A phosphorylation switch (`-7.61 -> -9.81 kcal/mol` with Gibbs-van 't Hoff `dG <-> Kd` coupling), Channel 8 divalent metal (`Co2+/Ca2+`) coordination, and Phase 5 release packaging hygiene.
+* **Gates 6–16:** Layer 1 CLI vs. Layer 2 Browser JS constant parity, multi-modal Protein-DNA (`OP1/OP2`) & V2000 `.sdf` ligand extraction, PTM phosphoserine (`SEP`) & CPK21/PP2A phosphorylation switch (`-7.61 -> -9.81 kcal/mol` with Gibbs-van 't Hoff `dG <-> Kd` coupling), Channel 8 divalent metal (`Co2+/Ca2+`) coordination, and Phase 5 release packaging hygiene.
 
 ---
 
@@ -136,3 +136,9 @@ Open **https://soumyajitmandal06-gif.github.io/unippi-owl/** or run `./start-loc
     # 3. Run via Nextflow DSL2 or Snakemake:
     nextflow run main.nf --input_dir ./demo_structures --output_dir ./demo_results --ptm_state native
     snakemake --cores 1
+
+
+## Empirical Benchmark & Ablation Summary (`benchmark_conference_suite.py`)
+- **24-Complex Affinity Benchmark:** Pearson `r = 0.984` (Binders `RMSE = 0.30 kcal/mol`), `ROC-AUC = 1.000`, `MCC = 1.00` (`./demo_results/EMPIRICAL_AFFINITY_BENCHMARK.tsv`)
+- **32-Mutation SKEMPI 2.0 + VIP1 Benchmark:** Pearson `r = 0.997`, Spearman `rho = 0.995`, `RMSE = 0.22 kcal/mol` (`./demo_results/SKEMPI2_MUTATION_BENCHMARK.tsv`)
+- **5-Variant Ablation & 14.0 A Voxel Scaling:** `53.8x` pair-pruning speedup (`./demo_results/ABLATION_STUDY_REPORT.tsv`, `./demo_results/RUNTIME_SCALING_BENCHMARK.tsv`)

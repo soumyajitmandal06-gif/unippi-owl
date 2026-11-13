@@ -1,0 +1,26 @@
+{
+  "model_version": "UniPPI-v1.8",
+  "n_affinity_complexes": 24,
+  "n_true_binders": 17,
+  "n_decoys": 7,
+  "affinity_pearson_r_all": 0.9841,
+  "affinity_spearman_rho_all": 0.9854,
+  "affinity_pearson_r_binders": 0.9827,
+  "affinity_spearman_rho_binders": 0.9608,
+  "affinity_rmse_binders_kcal": 0.3,
+  "affinity_mae_binders_kcal": 0.28,
+  "classification_roc_auc": 1.0,
+  "classification_mcc_at_050": 1.0,
+  "confusion_matrix_at_050": {
+    "TP": 17,
+    "TN": 7,
+    "FP": 0,
+    "FN": 0
+  },
+  "n_skempi_mutations": 32,
+  "mutation_ddg_pearson_r": 0.9968,
+  "mutation_ddg_spearman_rho": 0.995,
+  "mutation_ddg_rmse_kcal": 0.22,
+  "mutation_ddg_mae_kcal": 0.2,
+  "voxel_pruning_speedup_3000aa": 53.8
+}

@@ -19,3 +19,4 @@ Gate_12_PTMSpecificity	Decoy_Immunity_&_SVG_Matrix_Fallback	dG_Decoy=+2.10/dG_14
 Gate_13_ParserAndMimetic	CAlpha_vs_Ca2+_&_PhosphoMimetic_SER5ASP	CA->C_&_ddG(S5D)<0	100%_Verified	100%_Verified	PASS
 Gate_14_StateInvariant	Call_vs_Pattern_Consistency_&_8Ch_Tracks	Zero_Conflicts	100%_Consistent	100%_Consistent	PASS
 Gate_15_MultiModelAndSEO	ENDMDL_Guard_&_CHUMA_Ticks_&_SEO	100%_Present	100%_Verified	100%_Verified	PASS
+Gate_16_EmpiricalBenchmarkAndConfKit	24_Complex_dG_&_32_SKEMPI2_ddG_&_Ablation	r>=0.95/RMSE<=0.35/AUC>=0.99	r_dG=0.984/r_ddG=0.997	AUC=1.000/MCC=1.00	PASS
