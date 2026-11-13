@@ -109,14 +109,14 @@ We combine the PRODIGY linear equation (`dG_PRODIGY`) with an explicit biophysic
 
 ---
 
-## 4. Automated 13-Gate Regression Suite (`test_unippi_regression.py`)
+## 4. Automated 14-Gate Regression Suite (`test_unippi_regression.py`)
 
-Run all 13 automated verification gates with:
+Run all 14 automated verification gates with:
 
     python3 test_unippi_regression.py
 
 * **Gates 1–5:** Frozen 6-complex benchmark parity, Mode B fractional `[0,1]` pLDDT auto-scaling, strict 80-column FoldX/Rosetta PDB sanitization, 800 mM NaCl salt-stress divergence, and real 6-chain RCSB PDB `1BRS` crystal structure evaluation.
-* **Gates 6–13:** Layer 1 CLI vs. Layer 2 Browser JS constant parity, multi-modal Protein-DNA (`OP1/OP2`) & V2000 `.sdf` ligand extraction, PTM phosphoserine (`SEP`) & CPK21/PP2A phosphorylation switch (`-7.61 -> -9.81 kcal/mol` with Gibbs-van 't Hoff `dG <-> Kd` coupling), Channel 8 divalent metal (`Co2+/Ca2+`) coordination, and Phase 5 release packaging hygiene.
+* **Gates 6–14:** Layer 1 CLI vs. Layer 2 Browser JS constant parity, multi-modal Protein-DNA (`OP1/OP2`) & V2000 `.sdf` ligand extraction, PTM phosphoserine (`SEP`) & CPK21/PP2A phosphorylation switch (`-7.61 -> -9.81 kcal/mol` with Gibbs-van 't Hoff `dG <-> Kd` coupling), Channel 8 divalent metal (`Co2+/Ca2+`) coordination, and Phase 5 release packaging hygiene.
 
 ---
 

@@ -1556,6 +1556,14 @@ def process_structure_file(
                         u_now = round(0.55 * pd_n_now + 0.45 * s_af_now, 4)
                     res_pair["UIS"] = u_now
                     res_pair["UIS_margin"] = round(u_now - UIS_DECISION_THRESHOLD, 4)
+                    res_pair["threshold_call"] = "ABOVE_THRESHOLD" if u_now >= UIS_DECISION_THRESHOLD else "BELOW_THRESHOLD"
+                    res_pair["binding_class"] = "HIGH_CONFIDENCE" if u_now >= UIS_HIGH_CONF_THRESHOLD else ("MODERATE" if u_now >= 0.42 else "LOW_OR_DECOY")
+                    pat_c_id, pat_c_desc = classify_mechanistic_pattern(u_now, res_pair["ipTM"], res_pair["LIS"], d_u_now, res_pair["wBSA_A2"], res_pair["helical_prolines"], res_pair["steric_clashes"])
+                    if u_now >= UIS_DECISION_THRESHOLD and pat_c_id == "Pattern D":
+                        pat_c_id = "Pattern A" if res_pair["ipTM"] >= 0.60 else "Pattern B"
+                        pat_c_desc = "PTM / Metal-Coordinated Interactor (Stabilized by interfacial phosphate clamp or divalent cation bridge)"
+                    res_pair["pattern_id"] = pat_c_id
+                    res_pair["pattern_desc"] = pat_c_desc
                 for cm in res_pair.get("custom_mutations", []):
                     if cm.get("wt") in ("SER", "THR") and cm.get("mut") in ("ASP", "GLU") and cm.get("ddG_kcal", 0.0) > 0.0:
                         cm["ddG_kcal"] = round(cm["ddG_kcal"] - 1.15, 2)

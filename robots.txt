@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://soumyajitmandal06-gif.github.io/unippi-owl/sitemap.xml

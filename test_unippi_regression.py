@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 13-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 14-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 13-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 14-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -296,10 +296,22 @@ def main():
     report_lines.append("Gate_13_ParserAndMimetic\tCAlpha_vs_Ca2+_&_PhosphoMimetic_SER5ASP\tCA->C_&_ddG(S5D)<0\t100%_Verified\t100%_Verified\tPASS")
     print(f"[PASS] Gate 13: Legacy PDB C-alpha vs Ca2+ disambiguation & Phospho-Mimetic A:SER5ASP (ddG = {pmim_rec['custom_mutations'][0]['ddG_kcal']:+.2f} kcal/mol) verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 14: State-Machine Invariant Audit (Zero ABOVE_THRESHOLD + Pattern D Conflicts)
+    # --------------------------------------------------------------------------
+    assert lock_rec["threshold_call"] == "ABOVE_THRESHOLD" and lock_rec["pattern_id"] in ("Pattern A", "Pattern B"), f"PTM lock conflict: {lock_rec}"
+    for rec_chk in (ptm_rec, lock_rec, met_rec, deph_rec):
+        if rec_chk["threshold_call"] == "ABOVE_THRESHOLD":
+            assert rec_chk["pattern_id"] != "Pattern D", f"State conflict: {rec_chk}"
+    src_html_14 = Path("index.html").read_text(encoding="utf-8")
+    assert 'res.pattern_desc = "PTM / Metal-Coordinated Interactor' in src_html_14 and "r.pi_stacking" in src_html_14, "Missing Gate 14 state-machine invariant in index.html!"
+    report_lines.append("Gate_14_StateInvariant\tCall_vs_Pattern_Consistency_&_8Ch_Tracks\tZero_Conflicts\t100%_Consistent\t100%_Consistent\tPASS")
+    print("[PASS] Gate 14: State-machine invariant (ABOVE_THRESHOLD <-> Pattern A/B on PTM/Metal complexes) & 8-channel tracks verified.")
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 13 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 14 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

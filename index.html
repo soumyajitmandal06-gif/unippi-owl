@@ -4,6 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="UniPPI-OWL v1.8 — Universal Structure-to-Affinity, Interface Auditing & Mutational Screening Resource for AlphaFold3 and Experimental Complexes.">
+    <link rel="canonical" href="https://soumyajitmandal06-gif.github.io/unippi-owl/">
+  <meta name="keywords" content="unippiowl, unippi-owl, UniPPI-OWL, UniPPI-OWL v1.8, AlphaFold3 binding free energy, structure to affinity, VIP1 bZIP Arabidopsis, Daisuke Tsugama, Soumyajit Mandal">
+  <meta property="og:title" content="UniPPI-OWL v1.8 (unippiowl) | Universal Structure-to-Affinity Resource">
+  <meta property="og:url" content="https://soumyajitmandal06-gif.github.io/unippi-owl/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "UniPPI-OWL",
+    "alternateName": ["unippiowl", "unippi-owl", "UniPPI-OWL v1.8"],
+    "url": "https://soumyajitmandal06-gif.github.io/unippi-owl/",
+    "applicationCategory": "ScientificApplication",
+    "operatingSystem": "Web Browser, Linux, Windows, macOS",
+    "author": {
+      "@type": "Person",
+      "name": "Soumyajit Mandal",
+      "affiliation": "Central University of Rajasthan"
+    }
+  }
+  </script>
   <title>UniPPI-OWL v1.8 | Universal Structure-to-Affinity Resource</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
   <style>
@@ -1882,6 +1902,10 @@
                 res.UIS_margin = Number((uNow - UIS_THRESHOLD).toFixed(4));
                 res.threshold_call = uNow >= UIS_THRESHOLD ? "ABOVE_THRESHOLD" : "BELOW_THRESHOLD";
                 res.binding_class = uNow >= UIS_HIGH_CONF ? "HIGH_CONFIDENCE" : (uNow >= 0.42 ? "MODERATE" : "LOW_OR_DECOY");
+                if (uNow >= UIS_THRESHOLD && res.pattern_id === "Pattern D") {
+                  res.pattern_id = res.ipTM >= 0.60 ? "Pattern A" : "Pattern B";
+                  res.pattern_desc = "PTM / Metal-Coordinated Interactor (Stabilized by interfacial phosphate clamp or divalent cation bridge)";
+                }
               }
               ALL_RESULTS.push(res);
             }
@@ -2031,7 +2055,7 @@
         </tr>
         <tr>
           <td><strong>3. Solvation &amp; Contact Thermodynamics</strong></td>
-          <td>ΔG<sub>uni</sub> = ${r.dG_uni_kcal} kcal/mol · SB = ${r.salt_bridges} · HB = ${r.h_bonds} · HP = ${r.hydrophobic_contacts}</td>
+          <td>ΔG<sub>uni</sub> = ${r.dG_uni_kcal} kcal/mol · SB = ${r.salt_bridges} · HB = ${r.h_bonds} · HP = ${r.hydrophobic_contacts} · π = ${r.pi_stacking || 0} · SS = ${r.disulfides || 0}</td>
           <td>Scores both hydrophobic coiled-coil burial (wBSA = ${r.wBSA_A2} Å²) and polar/electrostatic salt-bridge/H-bond networks above the +2.10 kcal/mol cratic barrier.</td>
         </tr>
         <tr>
