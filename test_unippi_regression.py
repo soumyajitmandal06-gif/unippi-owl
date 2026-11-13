@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 11-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 12-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 11-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 12-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -264,10 +264,25 @@ def main():
     report_lines.append("Gate_11_VoxelAndUX\t14A_Voxel_&_Download_&_Dephospho\tUIS=0.3887/Pattern_C\t100%_Synced\t100%_Synced\tPASS")
     print("[PASS] Gate 11: 14.0 A 3D Voxel Hash, a.download exporter, Active-Row State Lock, and PP2A Dephospho Pattern C verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 12: PTM Specificity Guard (Decoys & Non-14-3-3 Unchanged) & SVG Fallback
+    # --------------------------------------------------------------------------
+    run_cmd("python3 unippi_cli.py -i ./demo_structures -o ./_tmp_ptm_all --ptm-state phospho")
+    with open("./_tmp_ptm_all/unippi_full_report.json", "r", encoding="utf-8") as f:
+        ptm_all_recs = {r["complex_id"]: r for r in json.load(f)}
+    shutil.rmtree("./_tmp_ptm_all", ignore_errors=True)
+    assert ptm_all_recs["1_VIP1_Homodimer_Positive_model_0"]["dG_uni_kcal"] == -10.35, "Pure VIP1 homodimer should not shift under 14-3-3 phospho lock!"
+    assert ptm_all_recs["6_VIP1_IDR_Hallucination_Decoy_model_0"]["dG_uni_kcal"] == 2.10 and ptm_all_recs["6_VIP1_IDR_Hallucination_Decoy_model_0"]["salt_bridges"] == 0, "IDR Decoy must never gain PTM energy or salt bridges!"
+    assert ptm_all_recs["4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_model_0"]["dG_uni_kcal"] == -9.81, "14-3-3 complex must shift to -9.81 kcal/mol under phospho!"
+    src_html_12 = Path("index.html").read_text(encoding="utf-8")
+    assert "contactBins" in src_html_12 and "minSeqA" in src_html_12 and "wBsa >= 100.0" in src_html_12, "Missing SVG fallback or PTM specificity guard in index.html!"
+    report_lines.append("Gate_12_PTMSpecificity\tDecoy_Immunity_&_SVG_Matrix_Fallback\tdG_Decoy=+2.10/dG_14-3-3=-9.81\t100%_Isolated\t100%_Isolated\tPASS")
+    print("[PASS] Gate 12: PTM 14-3-3 specificity (IDR decoy immune at +2.10 kcal/mol) & Mode B/C SVG matrix fallback verified.")
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 11 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 12 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

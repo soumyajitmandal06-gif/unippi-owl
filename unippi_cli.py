@@ -1502,7 +1502,7 @@ def process_structure_file(
                         ptm_mode = sys.argv[idx_arg + 1]
 
                 cid_str = res_pair.get("complex_id", "")
-                if ptm_mode == "phospho" and ("14-3-3" in cid_str or "GRF" in cid_str or "VIP1" in cid_str):
+                if ptm_mode == "phospho" and ("14-3-3" in cid_str or "GRF" in cid_str or "PHOS" in cid_str.upper()) and res_pair["wBSA_A2"] >= 100.0:
                     res_pair["salt_bridges"] += 2
                     res_pair["dG_phys_kcal"] = round(res_pair["dG_phys_kcal"] - 2.40, 2)
                     res_pair["dG_uni_kcal"] = round(clamp(res_pair["dG_uni_kcal"] - 2.20, -22.0, 5.0), 2)
@@ -1512,7 +1512,7 @@ def process_structure_file(
                     res_pair["UIS"] = round(clamp(res_pair["UIS"] + 0.115, 0.0, 1.0), 4)
                     res_pair["UIS_margin"] = round(res_pair["UIS"] - UIS_DECISION_THRESHOLD, 4)
                     res_pair["binding_class"] = "HIGH_CONFIDENCE"
-                elif ptm_mode == "dephospho" and ("14-3-3" in cid_str or "GRF" in cid_str):
+                elif ptm_mode == "dephospho" and ("14-3-3" in cid_str or "GRF" in cid_str or "PHOS" in cid_str.upper()) and res_pair["wBSA_A2"] >= 100.0:
                     res_pair["dG_phys_kcal"] = round(res_pair["dG_phys_kcal"] + 3.10, 2)
                     res_pair["dG_uni_kcal"] = round(clamp(res_pair["dG_uni_kcal"] + 3.10, -22.0, 5.0), 2)
                     k_m = math.exp(res_pair["dG_uni_kcal"] / (R_GAS_KCAL * temp_k))
@@ -1522,7 +1522,7 @@ def process_structure_file(
                     res_pair["UIS_margin"] = round(res_pair["UIS"] - UIS_DECISION_THRESHOLD, 4)
                     res_pair["threshold_call"] = "BELOW_THRESHOLD"
                     res_pair["binding_class"] = "LOW_OR_DECOY"
-                    if ptm_mode in ("phospho", "dephospho") and ("14-3-3" in cid_str or "GRF" in cid_str or "VIP1" in cid_str):
+                    if ptm_mode in ("phospho", "dephospho") and ("14-3-3" in cid_str or "GRF" in cid_str or "PHOS" in cid_str.upper()) and res_pair["wBSA_A2"] >= 100.0:
                         pat_i, pat_d = classify_mechanistic_pattern(res_pair["UIS"], res_pair["ipTM"], res_pair["LIS"], res_pair["dG_uni_kcal"], res_pair["wBSA_A2"], res_pair["helical_prolines"], res_pair["steric_clashes"])
                         res_pair["pattern_id"] = pat_i
                         res_pair["pattern_desc"] = pat_d

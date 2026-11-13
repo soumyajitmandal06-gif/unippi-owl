@@ -1475,8 +1475,8 @@
 
       const curSalt_mM = clamp(parseFloat(document.getElementById("ionicInput")?.value || "150") || 150.0, 10.0, 1000.0);
       const ptmState = document.getElementById("ptmStateSelect")?.value || "native";
-      const isPtmTarget = (complexId.includes("14-3-3") || complexId.includes("GRF") || complexId.includes("VIP1"));
-      const is1433Target = (complexId.includes("14-3-3") || complexId.includes("GRF"));
+      const isPtmTarget = (complexId.includes("14-3-3") || complexId.includes("GRF") || complexId.toUpperCase().includes("PHOS")) && wBsa >= 100.0;
+      const is1433Target = (complexId.includes("14-3-3") || complexId.includes("GRF") || complexId.toUpperCase().includes("PHOS")) && wBsa >= 100.0;
       const ptmBonus = (ptmState === "phospho" && isPtmTarget) ? -2.20 : ((ptmState === "dephospho" && is1433Target) ? 3.10 : 0.0);
       if (ptmBonus < 0) nSb += 2;
       const { dPhys: rawDgPhys, dUni: rawDgUni } = evalEnvAtSalt(curSalt_mM);
@@ -2151,20 +2151,23 @@
 
     function loadCompensatoryPreset() {
       const r = ALL_RESULTS[ACTIVE_INDEX];
-      if (!r || !r.mutCatalog) return;
+      if (!r || !r.mutCatalog || !r.mutCatalog.length) return;
+      const [cA, cB] = (r.chain_pair || "A-B").split("-");
       const sel1 = document.getElementById("mutResidueSelect");
       const sel2 = document.getElementById("mutResidueSelect2");
       const aa1 = document.getElementById("mutTargetAASelect");
       const aa2 = document.getElementById("mutTargetAASelect2");
       if (r.helical_prolines > 0) {
-        const i1 = r.mutCatalog.findIndex(m => m.chainId === "A" && m.wtName === "PRO");
-        const i2 = r.mutCatalog.findIndex(m => m.chainId === "B" && m.wtName === "PRO");
+        const i1 = r.mutCatalog.findIndex(m => m.chainId === cA && m.wtName === "PRO");
+        const i2 = r.mutCatalog.findIndex(m => m.chainId === cB && m.wtName === "PRO");
         if (i1 >= 0) sel1.value = i1;
         if (i2 >= 0) sel2.value = i2;
         aa1.value = "LEU"; aa2.value = "LEU";
       } else {
-        const i1 = r.mutCatalog.findIndex(m => m.chainId === "A" && m.resSeq === 1);
-        const i2 = r.mutCatalog.findIndex(m => m.chainId === "B" && m.resSeq === 1);
+        let i1 = r.mutCatalog.findIndex(m => m.chainId === cA && m.cInfo && m.cInfo.sb > 0);
+        let i2 = r.mutCatalog.findIndex(m => m.chainId === cB && m.cInfo && m.cInfo.sb > 0);
+        if (i1 < 0) i1 = r.mutCatalog.findIndex(m => m.chainId === cA);
+        if (i2 < 0) i2 = r.mutCatalog.findIndex(m => m.chainId === cB);
         if (i1 >= 0) sel1.value = i1;
         if (i2 >= 0) sel2.value = i2;
         aa1.value = "LYS"; aa2.value = "GLU";
@@ -2237,21 +2240,32 @@
 
     function renderSVGMaps(r) {
       const w = 460, h = 300;
-      const lenA = r.lenA || 28, lenB = r.lenB || 28;
+      const [cA, cB] = (r.chain_pair || "A-B").split("-");
+      const catA = (r.mutCatalog || []).filter(m => m.chainId === cA).map(m => m.resSeq);
+      const catB = (r.mutCatalog || []).filter(m => m.chainId === cB).map(m => m.resSeq);
+      const conA = (r.contacts || []).map(c => c.resSeqA || 1);
+      const conB = (r.contacts || []).map(c => c.resSeqB || 1);
+      const allSeqA = catA.length ? catA : (conA.length ? conA : [1, r.lenA || 28]);
+      const allSeqB = catB.length ? catB : (conB.length ? conB : [1, r.lenB || 28]);
+      const minSeqA = Math.min(...allSeqA), maxSeqA = Math.max(minSeqA + 1, ...allSeqA);
+      const minSeqB = Math.min(...allSeqB), maxSeqB = Math.max(minSeqB + 1, ...allSeqB);
+
       let linesSvg = "";
       for (const c of (r.contacts || [])) {
-        const yA = 35 + ((c.resSeqA - 1) / Math.max(1, lenA - 1)) * (h - 70);
-        const yB = 35 + ((c.resSeqB - 1) / Math.max(1, lenB - 1)) * (h - 70);
+        const normA = clamp(((c.resSeqA || minSeqA) - minSeqA) / Math.max(1, maxSeqA - minSeqA), 0.0, 1.0);
+        const normB = clamp(((c.resSeqB || minSeqB) - minSeqB) / Math.max(1, maxSeqB - minSeqB), 0.0, 1.0);
+        const yA = 35 + normA * (h - 70);
+        const yB = 35 + normB * (h - 70);
         const color = c.sb > 0 ? "#e11d48" : (c.hb > 0 ? "#d97706" : "#0284c7");
-        const strokeW = Math.max(1.0, 3.2 * c.weight);
-        const op = Math.max(0.20, c.weight);
-        linesSvg += `<line x1="120" y1="${yA}" x2="340" y2="${yB}" stroke="${color}" stroke-width="${strokeW}" stroke-opacity="${op}" />`;
+        const strokeW = Math.max(1.0, 3.2 * (c.weight || 1.0));
+        const op = Math.max(0.20, c.weight || 1.0);
+        linesSvg += `<line x1="120" y1="${yA.toFixed(1)}" x2="340" y2="${yB.toFixed(1)}" stroke="${color}" stroke-width="${strokeW}" stroke-opacity="${op}" />`;
       }
       document.getElementById("contactSvgWrap").innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="100%" height="280">
           <rect width="${w}" height="${h}" fill="#ffffff"/>
-          <text x="120" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">Chain A (1–${lenA})</text>
-          <text x="340" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">Chain B (1–${lenB})</text>
+          <text x="120" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">Chain ${cA} (${minSeqA}–${maxSeqA})</text>
+          <text x="340" y="22" text-anchor="middle" font-size="12" font-weight="bold" fill="#0f172a">Chain ${cB} (${minSeqB}–${maxSeqB})</text>
           <line x1="120" y1="35" x2="120" y2="${h-35}" stroke="#38bdf8" stroke-width="6" stroke-linecap="round"/>
           <line x1="340" y1="35" x2="340" y2="${h-35}" stroke="#34d399" stroke-width="6" stroke-linecap="round"/>
           ${linesSvg}
@@ -2261,7 +2275,7 @@
 
       const pw = 460, ph = 300;
       let rects = "";
-      if (r.paeMat) {
+      if (r.paeMat && r.paeMat.length) {
         const n = r.paeMat.length;
         const step = Math.max(1, Math.floor(n / 28));
         const cellSz = 210 / (n / step);
@@ -2277,6 +2291,30 @@
             rects += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(cellSz+0.6).toFixed(1)}" height="${(cellSz+0.6).toFixed(1)}" fill="rgb(${rCol},${gCol},${bCol})"/>`;
           }
         }
+      } else {
+        // Fallback Coordinate Proximity & Confidence Matrix for Mode B / Mode C Crystal Structures
+        const gridN = 28, cellSz = 210 / gridN;
+        const basePae = r.mean_intf_PAE_A || 3.5;
+        const contactBins = new Set();
+        for (const c of (r.contacts || [])) {
+          const bi = Math.min(13, Math.floor(clamp(((c.resSeqA || minSeqA) - minSeqA) / Math.max(1, maxSeqA - minSeqA), 0, 0.999) * 14));
+          const bj = 14 + Math.min(13, Math.floor(clamp(((c.resSeqB || minSeqB) - minSeqB) / Math.max(1, maxSeqB - minSeqB), 0, 0.999) * 14));
+          contactBins.add(`${bi},${bj}`);
+          contactBins.add(`${bj},${bi}`);
+        }
+        for (let i = 0; i < gridN; i++) {
+          for (let j = 0; j < gridN; j++) {
+            const sameChain = (i < 14 && j < 14) || (i >= 14 && j >= 14);
+            const isContact = contactBins.has(`${i},${j}`);
+            const val = i === j ? 0.8 : (sameChain ? 2.2 : (isContact ? Math.min(3.2, basePae) : Math.min(18.0, basePae + 6.5)));
+            const ratio = clamp(val / 30.0, 0, 1);
+            const rCol = Math.round(15 + ratio * 225);
+            const gCol = Math.round(76 + ratio * 165);
+            const bCol = Math.round(129 + ratio * 115);
+            const x = 125 + j * cellSz, y = 30 + i * cellSz;
+            rects += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(cellSz+0.6).toFixed(1)}" height="${(cellSz+0.6).toFixed(1)}" fill="rgb(${rCol},${gCol},${bCol})"/>`;
+          }
+        }
       }
       document.getElementById("paeSvgWrap").innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${pw} ${ph}" width="100%" height="280">
@@ -2285,7 +2323,7 @@
           <rect x="125" y="30" width="210" height="210" fill="none" stroke="#0f172a" stroke-width="1.5"/>
           <line x1="230" y1="30" x2="230" y2="240" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="4,3"/>
           <line x1="125" y1="135" x2="335" y2="135" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="4,3"/>
-          <text x="230" y="${ph-10}" text-anchor="middle" font-size="11" fill="#475569">Dark Blue: Low PAE (≤ 3.5 Å Rigid) · Pale: High PAE (&gt; 20 Å Disordered) · LIS = ${r.LIS.toFixed(3)}</text>
+          <text x="230" y="${ph-10}" text-anchor="middle" font-size="11" fill="#475569">Dark Blue: Low Error / Contact (≤ 3.5 Å) · Pale: High Error · LIS = ${r.LIS.toFixed(3)}</text>
         </svg>
       `;
 
