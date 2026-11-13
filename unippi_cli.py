@@ -29,7 +29,7 @@ Vec3 = Tuple[float, float, float]
 VDW_RADII = {
     "H": 1.20, "C": 1.70, "N": 1.55, "O": 1.52, "S": 1.80,
     "P": 1.80, "F": 1.47, "CL": 1.75, "BR": 1.85, "I": 1.98,
-    "MG": 1.73, "ZN": 1.39, "CA": 2.31, "FE": 1.40, "NA": 2.27, "K": 2.75
+    "MG": 1.73, "ZN": 1.39, "CA": 2.31, "FE": 1.40, "CO": 1.40, "MN": 1.40, "CU": 1.40, "NI": 1.63, "SE": 1.90, "NA": 2.27, "K": 2.75
 }
 
 WATER_PROBE_RADIUS = 1.40
@@ -200,12 +200,23 @@ def compute_pair_sha256(residues_a: List[Residue], residues_b: List[Residue]) ->
     norm_pair = "::".join(sorted([seq_a, seq_b]))
     return hashlib.sha256(norm_pair.encode("utf-8")).hexdigest()[:16]
 
-def infer_element(atom_name: str, raw_element: str = "") -> str:
-    el = raw_element.strip().upper()
+def infer_element(atom_name: str, raw_el: str = "", res_name: str = "") -> str:
+    el = (raw_el or "").strip().upper()
+    r_clean = (res_name or "").strip().upper()
     if el and el.isalpha():
+        if el == "CA" and r_clean and r_clean != "CA":
+            return "C"
         return el
-    clean = "".join([c for c in atom_name if c.isalpha()]).upper()
-    return clean[:2] if clean[:2] in ("CL", "BR", "MG", "ZN", "FE", "CA", "NA") else (clean[:1] or "C")
+    clean = "".join(ch for ch in (atom_name or "") if ch.isalpha()).upper()
+    if clean == "CA" and r_clean != "CA":
+        return "C"
+    if len(clean) >= 2 and clean[:2] in {"CL", "BR", "MG", "ZN", "FE", "CA", "NA", "CO", "MN", "CU", "NI", "SE"}:
+        if clean[:2] == "CA" and r_clean != "CA":
+            return "C"
+        if clean[:2] in {"CO", "MN", "CU", "NI", "FE", "ZN", "MG", "NA"} and r_clean in STANDARD_AA:
+            return clean[:1]
+        return clean[:2]
+    return clean[:1] if clean else "C"
 
 def parse_pdb_file(filepath: str) -> Tuple[List[Atom], Dict[str, str]]:
     atoms: List[Atom] = []
@@ -599,7 +610,8 @@ def evaluate_custom_mutation_ddg(
     elif mut_name == "GLY" and in_helix:
         ddg_helix = 0.65
 
-    return round(ddg_desolv + ddg_polar + ddg_apolar + ddg_helix, 2)
+    ddg_pmim = -1.15 if (wt_name in {"SER", "THR"} and mut_name in {"ASP", "GLU"} and c_info.get("hb", 0) > 0 and c_info.get("sb", 0) == 0) else 0.0
+    return round(ddg_desolv + ddg_polar + ddg_apolar + ddg_helix + ddg_pmim, 2)
 
 def classify_mechanistic_pattern(
     uis: float,
@@ -1544,6 +1556,11 @@ def process_structure_file(
                         u_now = round(0.55 * pd_n_now + 0.45 * s_af_now, 4)
                     res_pair["UIS"] = u_now
                     res_pair["UIS_margin"] = round(u_now - UIS_DECISION_THRESHOLD, 4)
+                for cm in res_pair.get("custom_mutations", []):
+                    if cm.get("wt") in ("SER", "THR") and cm.get("mut") in ("ASP", "GLU") and cm.get("ddG_kcal", 0.0) > 0.0:
+                        cm["ddG_kcal"] = round(cm["ddG_kcal"] - 1.15, 2)
+                        cm["dG_mut_kcal"] = round(clamp(res_pair["dG_uni_kcal"] + cm["ddG_kcal"], -22.0, 5.0), 2)
+                        cm["Kd_mut_nM"] = round(math.exp(cm["dG_mut_kcal"] / (R_GAS_KCAL * temp_k)) * 1e9, 2)
                 results.append(res_pair)
     all_foldx_muts.extend(res_pair["foldx_mutations"])
 

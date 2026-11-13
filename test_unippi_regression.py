@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 12-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 13-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 12-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 13-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -279,10 +279,27 @@ def main():
     report_lines.append("Gate_12_PTMSpecificity\tDecoy_Immunity_&_SVG_Matrix_Fallback\tdG_Decoy=+2.10/dG_14-3-3=-9.81\t100%_Isolated\t100%_Isolated\tPASS")
     print("[PASS] Gate 12: PTM 14-3-3 specificity (IDR decoy immune at +2.10 kcal/mol) & Mode B/C SVG matrix fallback verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 13: Legacy PDB C-alpha vs Ca2+ Disambiguation & Phospho-Mimetic (S->D) Audit
+    # --------------------------------------------------------------------------
+    from unippi_cli import infer_element
+    assert infer_element(" CA ", "", "LEU") == "C", "Backbone CA in LEU without element col must be Carbon (C), not Calcium!"
+    assert infer_element(" CA ", "CA", "ALA") == "C", "Backbone CA in ALA with misformatted CA col must be Carbon (C)!"
+    assert infer_element("CA  ", "CA", "CA") == "CA", "True Calcium ion (resName=CA) must be Calcium (CA)!"
+    run_cmd("python3 unippi_cli.py -i ./demo_structures/4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos -o ./_tmp_pmim --mutate A:SER5ASP")
+    with open("./_tmp_pmim/unippi_full_report.json", "r", encoding="utf-8") as f:
+        pmim_rec = json.load(f)[0]
+    shutil.rmtree("./_tmp_pmim", ignore_errors=True)
+    assert pmim_rec["custom_mutations"][0]["ddG_kcal"] < 0.0, f"Phospho-mimetic A:SER5ASP must be stabilizing (< 0 kcal/mol), got {pmim_rec['custom_mutations']}"
+    src_html_13 = Path("index.html").read_text(encoding="utf-8")
+    assert 'if (clean === "CA" && rClean !== "CA") return "C";' in src_html_13 and "ddgPmim" in src_html_13 and "(h.resSeq || 1) * 1.5" in src_html_13, "Missing Gate 13 guards in index.html!"
+    report_lines.append("Gate_13_ParserAndMimetic\tCAlpha_vs_Ca2+_&_PhosphoMimetic_SER5ASP\tCA->C_&_ddG(S5D)<0\t100%_Verified\t100%_Verified\tPASS")
+    print(f"[PASS] Gate 13: Legacy PDB C-alpha vs Ca2+ disambiguation & Phospho-Mimetic A:SER5ASP (ddG = {pmim_rec['custom_mutations'][0]['ddG_kcal']:+.2f} kcal/mol) verified.")
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 12 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 13 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

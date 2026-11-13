@@ -894,7 +894,7 @@
     const R_GAS_KCAL = 1.98720425864083e-3;
     const WATER_PROBE = 1.40;
 
-    const VDW_RADII = { H:1.20, C:1.70, N:1.55, O:1.52, S:1.80, P:1.80, F:1.47, CL:1.75, BR:1.85, I:1.98, MG:1.73, ZN:1.39, CA:2.31, FE:1.40, NA:2.27, K:2.75 };
+    const VDW_RADII = { H:1.20, C:1.70, N:1.55, O:1.52, S:1.80, P:1.80, F:1.47, CL:1.75, BR:1.85, I:1.98, MG:1.73, ZN:1.39, CA:2.31, FE:1.40, CO:1.40, MN:1.40, CU:1.40, NI:1.63, SE:1.90, NA:2.27, K:2.75 };
     const STANDARD_AA = new Set(["ALA","ARG","ASN","ASP","CYS","GLN","GLU","GLY","HIS","ILE","LEU","LYS","MET","PHE","PRO","SER","THR","TRP","TYR","VAL"]);
     const AA_ORDER_20 = ["ALA","VAL","LEU","ILE","MET","PHE","TRP","TYR","PRO","GLY","SER","THR","CYS","ASN","GLN","HIS","LYS","ARG","ASP","GLU"];
     const MODIFIED_AA_MAP = { SEP:"SER", TPO:"THR", PTR:"TYR", MSE:"MET", CSO:"CYS", HIP:"HIS", HID:"HIS", HIE:"HIS", MLY:"LYS", M3L:"LYS", ALY:"LYS", HYP:"PRO" };
@@ -975,12 +975,21 @@
     let SURFACE_SHOWN = false;
     let LAST_UPLOADED_FILES = null;
 
-    function inferElement(atomName, rawEl="") {
-      const el = rawEl.trim().toUpperCase();
-      if (el && /^[A-Z]+$/.test(el)) return el;
-      const clean = atomName.replace(/[^A-Za-z]/g, "").toUpperCase();
+    function inferElement(atomName, rawEl="", resName="") {
+      const el = (rawEl || "").trim().toUpperCase();
+      const rClean = (resName || "").trim().toUpperCase();
+      if (el && /^[A-Z]+$/.test(el)) {
+        if (el === "CA" && rClean && rClean !== "CA") return "C";
+        return el;
+      }
+      const clean = (atomName || "").replace(/[^A-Za-z]/g, "").toUpperCase();
+      if (clean === "CA" && rClean !== "CA") return "C";
       const two = clean.slice(0,2);
-      if (["CL","BR","MG","ZN","FE","CA","NA"].includes(two)) return two;
+      if (["CL","BR","MG","ZN","FE","CA","NA","CO","MN","CU","NI","SE"].includes(two)) {
+        if (two === "CA" && rClean !== "CA") return "C";
+        if (["CO","MN","CU","NI","FE","ZN","MG","NA"].includes(two) && STANDARD_AA.has(rClean)) return clean.slice(0,1) || "C";
+        return two;
+      }
       return clean.slice(0,1) || "C";
     }
 
@@ -1050,7 +1059,7 @@
             const x = parseFloat(row["Cartn_x"]), y = parseFloat(row["Cartn_y"]), z = parseFloat(row["Cartn_z"]);
             const occ = (row["occupancy"] && row["occupancy"] !== "." && row["occupancy"] !== "?") ? parseFloat(row["occupancy"]) : 1.0;
             const bfac = (row["B_iso_or_equiv"] && row["B_iso_or_equiv"] !== "." && row["B_iso_or_equiv"] !== "?") ? parseFloat(row["B_iso_or_equiv"]) : 0.0;
-            const element = inferElement(name, row["type_symbol"] || "");
+            const element = inferElement(name, row["type_symbol"] || "", resName);
             if (element === "H" || isNaN(x)) continue;
             atoms.push({ serial: parseInt(row["id"]||"0",10), name, resName, chainId, resSeq, ins, x, y, z, occ, bfac, element, isHet: group==="HETATM" });
           }
@@ -1072,7 +1081,7 @@
             const x = parseFloat(line.slice(30,38)), y = parseFloat(line.slice(38,46)), z = parseFloat(line.slice(46,54));
             const occ = parseFloat(line.slice(54,60).trim() || "1.0");
             const bfac = parseFloat(line.slice(60,66).trim() || "0.0");
-            const element = inferElement(name, line.length >= 78 ? line.slice(76,78) : "");
+            const element = inferElement(name, line.length >= 78 ? line.slice(76,78) : "", resName);
             if (element === "H" || isNaN(x)) continue;
             atoms.push({ serial: parseInt(line.slice(6,11).trim()||"0",10), name, resName, chainId, resSeq, ins, x, y, z, occ, bfac, element, isHet: line.startsWith("HETATM") });
           }
@@ -1212,7 +1221,8 @@
       let ddgHelix = 0.0;
       if (mutName === "PRO") ddgHelix = inHelix ? 3.10 : 0.80;
       else if (mutName === "GLY" && inHelix) ddgHelix = 0.65;
-      return Number((ddgDesolv + ddgPolar + ddgApolar + ddgHelix).toFixed(2));
+      const ddgPmim = (["SER","THR"].includes(wtName) && ["ASP","GLU"].includes(mutName) && cInfo.hb > 0 && cInfo.sb === 0) ? -1.15 : 0.0;
+      return Number((ddgDesolv + ddgPolar + ddgApolar + ddgHelix + ddgPmim).toFixed(2));
     }
 
     function toSanitizedPDBString(orderedResidues) {
@@ -1747,7 +1757,7 @@
                 fBuried: h.buried,
                 inHel: h.in_helix !== undefined ? h.in_helix : true,
                 confScale: 1.0,
-                coord: [0, 0, 0]
+                coord: [h.chainId === "A" ? -3.0 : 3.0, 0.0, (h.resSeq || 1) * 1.5]
               }));
             }
             const baseDg = r.dG_uni_kcal || -8.0, fAp = r.f_apolar || 0.5;
