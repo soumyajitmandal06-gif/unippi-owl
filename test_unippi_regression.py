@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 10-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 11-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 10-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 11-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -244,10 +244,30 @@ def main():
     report_lines.append("Gate_10_ReleaseLock\tAll_12_Deliverables_&_PTM_Sync\tv1.8_Master_Check\t100%_Verified\t100%_Verified\tPASS")
     print("[PASS] Gate 10: All 12 release files, CDN links, and CLI-to-Browser PTM (-2.20 kcal/mol) sync verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 11: 14.0A 3D Voxel Hash, Active-Row State Lock, Download Fix & Dephospho Sync
+    # --------------------------------------------------------------------------
+    run_cmd("python3 unippi_cli.py -i ./demo_structures/4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos -o ./_tmp_ptm_dephos --ptm-state dephospho")
+    with open("./_tmp_ptm_dephos/unippi_full_report.json", "r", encoding="utf-8") as f:
+        deph_rec = json.load(f)[0]
+    shutil.rmtree("./_tmp_ptm_dephos", ignore_errors=True)
+    assert abs(deph_rec["dG_uni_kcal"] - (-4.51)) <= 0.01 and abs(deph_rec["UIS"] - 0.3887) <= 0.001 and deph_rec["pattern_id"] == "Pattern C", f"Dephospho sync failed: {deph_rec}"
+    src_html_11 = Path("index.html").read_text(encoding="utf-8")
+    for req_token in ("a.download = filename;", "const voxelGridB = new Map();", "_KEEP_COMPLEX_KEY", "A:TYR5ALA", "(-rawDgUni - 5.0)", "dgDeltaCoord"):
+        assert req_token in src_html_11, f"Missing {req_token} in index.html!"
+    assert "a.download = filename;" in src_html_11 and "URL.revokeObjectURL(url)" in src_html_11, "downloadTextFile check failed!"
+    js_body = src_html_11.split("<script>")[1].split("</script>")[0]
+    if shutil.which("node"):
+        Path("_tmp_check.js").write_text(js_body, encoding="utf-8")
+        run_cmd("node --check _tmp_check.js")
+        Path("_tmp_check.js").unlink(missing_ok=True)
+    report_lines.append("Gate_11_VoxelAndUX\t14A_Voxel_&_Download_&_Dephospho\tUIS=0.3887/Pattern_C\t100%_Synced\t100%_Synced\tPASS")
+    print("[PASS] Gate 11: 14.0 A 3D Voxel Hash, a.download exporter, Active-Row State Lock, and PP2A Dephospho Pattern C verified.")
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 10 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 11 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

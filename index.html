@@ -545,7 +545,7 @@
           </select>
         </label>
         <label>Batch Custom Mutations (Comma-Separated)
-          <input type="text" id="customMutInput" placeholder="e.g. A:LEU5PRO,A:PRO5LEU" value="A:LEU5PRO,A:PRO5LEU,A:ASP2ALA" onchange="renderActiveComplex()">
+          <input type="text" id="customMutInput" placeholder="e.g. A:LEU5PRO,A:PRO5LEU" value="A:LEU5PRO,A:PRO5LEU,A:ASP2ALA,A:TYR5ALA" onchange="renderActiveComplex()">
         </label>
         <label>Report Depth
           <select id="reportModeSelect" onchange="renderActiveComplex()">
@@ -1320,8 +1320,25 @@
       const resContrib = new Map();
       const prodigyIC = { CHARGED_CHARGED:0, CHARGED_APOLAR:0, POLAR_POLAR:0, POLAR_APOLAR:0, APOLAR_APOLAR:0, CHARGED_POLAR:0 };
 
+      const voxelSize = 14.0;
+      const voxelGridB = new Map();
+      for (const rb of resB) {
+        const vk = `${Math.floor(rb.centroid[0]/voxelSize)},${Math.floor(rb.centroid[1]/voxelSize)},${Math.floor(rb.centroid[2]/voxelSize)}`;
+        if (!voxelGridB.has(vk)) voxelGridB.set(vk, []);
+        voxelGridB.get(vk).push(rb);
+      }
       for (const ra of resA) {
-        for (const rb of resB) {
+        const rax = Math.floor(ra.centroid[0]/voxelSize), ray = Math.floor(ra.centroid[1]/voxelSize), raz = Math.floor(ra.centroid[2]/voxelSize);
+        const candB = [];
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dz = -1; dz <= 1; dz++) {
+              const bucket = voxelGridB.get(`${rax+dx},${ray+dy},${raz+dz}`);
+              if (bucket) for (const bItem of bucket) candB.push(bItem);
+            }
+          }
+        }
+        for (const rb of candB) {
           if (dist3(ra.centroid, rb.centroid) > 16.0) continue;
           const cbDist = dist3(ra.cbCoord, rb.cbCoord);
           const [wij, pairPae] = pairWeight(ra, rb);
@@ -1398,7 +1415,7 @@
             resA: `${ra.chainId}:${ra.resName}${ra.resSeq}`, resB: `${rb.chainId}:${rb.resName}${rb.resSeq}`,
             resSeqA: ra.resSeq, resSeqB: rb.resSeq, coordA: ra.cbCoord, coordB: rb.cbCoord,
             minDist: Number(minD.toFixed(2)), pae: Number(pairPae.toFixed(2)), weight: Number(wij.toFixed(3)),
-            sb: effSb, hb: effHb, hp: effHp, clash: effClash
+            sb: effSb, hb: effHb, hp: effHp, pi: pPi, ss: pSs, clash: effClash
           });
         }
       }
@@ -1665,11 +1682,20 @@
       }
 
       ALL_RESULTS.sort((a,b) => b.UIS - a.UIS);
-      ACTIVE_INDEX = 0;
+      if (window._KEEP_COMPLEX_KEY) {
+        const foundIdx = ALL_RESULTS.findIndex(x => `${x.complex_id}|${x.chain_pair}` === window._KEEP_COMPLEX_KEY);
+        ACTIVE_INDEX = foundIdx >= 0 ? foundIdx : 0;
+        window._KEEP_COMPLEX_KEY = null;
+      } else {
+        ACTIVE_INDEX = 0;
+      }
       updateUI();
     }
 
     function recomputeActiveSuite() {
+      if (ALL_RESULTS.length && ALL_RESULTS[ACTIVE_INDEX]) {
+        window._KEEP_COMPLEX_KEY = `${ALL_RESULTS[ACTIVE_INDEX].complex_id}|${ALL_RESULTS[ACTIVE_INDEX].chain_pair}`;
+      }
       if (LAST_UPLOADED_FILES) handleFileSelect(LAST_UPLOADED_FILES);
       else loadCrossKingdomBenchmark();
     }
@@ -1688,13 +1714,42 @@
         if (jf.name.includes("unippi_full_report")) {
           const txt = await jf.text();
           ALL_RESULTS = JSON.parse(txt).map(r => {
-            r.hotspots = (r.hotspots || []).map(h => ({
-              ...h,
-              ddG_Ala: h.ddG_Ala !== undefined ? h.ddG_Ala : (h.ddG_Ala_kcal || 0.0),
-              ddG_Pro: h.ddG_Pro !== undefined ? h.ddG_Pro : Number(((h.ddG_Ala_kcal || 0.0) + 3.10).toFixed(2)),
-              buried: h.buried !== undefined ? h.buried : (h.f_buried !== undefined ? h.f_buried : 0.35),
-              note: h.note || h.class || "HOTSPOT"
+            r.hotspots = (r.hotspots || []).map(h => {
+              const parts = (h.residue || "A:LEU5").split(":");
+              const cId = h.chainId || parts[0] || "A";
+              const rSeq = h.resSeq || parseInt((parts[1] || "5").replace(/[^0-9]/g, ""), 10) || 1;
+              return {
+                ...h,
+                chainId: cId,
+                resSeq: rSeq,
+                ddG_Ala: h.ddG_Ala !== undefined ? h.ddG_Ala : (h.ddG_Ala_kcal || 0.0),
+                ddG_Pro: h.ddG_Pro !== undefined ? h.ddG_Pro : (h.ddG_Pro_kcal !== undefined ? h.ddG_Pro_kcal : Number(((h.ddG_Ala_kcal || 0.0) + 3.10).toFixed(2))),
+                buried: h.buried !== undefined ? h.buried : (h.buried_frac !== undefined ? h.buried_frac : (h.f_buried !== undefined ? h.f_buried : 0.35)),
+                note: h.note || h.class || "HOTSPOT"
+              };
+            });
+            r.contacts = (r.contacts || []).map(c => ({
+              ...c,
+              resA: c.resA || c.res_a || "A:LEU2",
+              resB: c.resB || c.res_b || "B:LEU2",
+              resSeqA: c.resSeqA || parseInt(((c.res_a || "A:1").split(":")[1] || "1").replace(/[^0-9]/g, ""), 10) || 1,
+              resSeqB: c.resSeqB || parseInt(((c.res_b || "B:1").split(":")[1] || "1").replace(/[^0-9]/g, ""), 10) || 1,
+              weight: c.weight !== undefined ? c.weight : (c.weight_w !== undefined ? c.weight_w : 1.0)
             }));
+            if (!r.mutCatalog || !r.mutCatalog.length) {
+              r.mutCatalog = r.hotspots.map(h => ({
+                key: `${h.chainId}|${h.resSeq}|`,
+                label: h.residue,
+                chainId: h.chainId,
+                resSeq: h.resSeq,
+                wtName: (h.residue.split(":")[1] || "LEU").replace(/[0-9-]/g, "") || "LEU",
+                cInfo: { sb: 1, hb: 1, hp: 2, pi: 0 },
+                fBuried: h.buried,
+                inHel: h.in_helix !== undefined ? h.in_helix : true,
+                confScale: 1.0,
+                coord: [0, 0, 0]
+              }));
+            }
             const baseDg = r.dG_uni_kcal || -8.0, fAp = r.f_apolar || 0.5;
             r.evalDgAtSalt = (s_mM) => {
               const iM = clamp(s_mM / 1000.0, 0.01, 2.0);
@@ -1789,6 +1844,7 @@
                   }
                 }
               }
+              const prevDgCoord = res.dG_uni_kcal;
               if (ptmSbAdded > 0 && res.salt_bridges < ptmSbAdded) {
                 res.salt_bridges = ptmSbAdded;
                 res.dG_phys_kcal = Number((res.dG_phys_kcal - 1.50 * ptmSbAdded).toFixed(2));
@@ -1803,6 +1859,11 @@
                 const km = Math.exp(res.dG_uni_kcal / (R_GAS_KCAL * tempK));
                 res.Kd_M = Number(km.toExponential(4));
                 res.Kd_nM = Number((km * 1e9).toFixed(3));
+                const dgDeltaCoord = res.dG_uni_kcal - prevDgCoord;
+                const origEvalSalt = res.evalDgAtSalt;
+                if (origEvalSalt && Math.abs(dgDeltaCoord) > 1e-4) {
+                  res.evalDgAtSalt = (s_mM) => clamp(origEvalSalt(s_mM) + dgDeltaCoord, -22.0, 5.0);
+                }
                 const sAfNow = clamp((-res.dG_uni_kcal - 5.0) / 8.5, 0.0, 1.0);
                 const uNow = res.mode === "MODE_A_PRED_FULL"
                   ? Number((0.25*res.ipTM + 0.30*res.LIS + 0.25*res.pDockQ_PAE + 0.20*sAfNow).toFixed(4))
@@ -1819,7 +1880,13 @@
       }
 
       ALL_RESULTS.sort((a,b) => b.UIS - a.UIS);
-      ACTIVE_INDEX = 0;
+      if (window._KEEP_COMPLEX_KEY) {
+        const foundIdx = ALL_RESULTS.findIndex(x => `${x.complex_id}|${x.chain_pair}` === window._KEEP_COMPLEX_KEY);
+        ACTIVE_INDEX = foundIdx >= 0 ? foundIdx : 0;
+        window._KEEP_COMPLEX_KEY = null;
+      } else {
+        ACTIVE_INDEX = 0;
+      }
       updateUI();
     }
 
@@ -2005,7 +2072,8 @@
 
     function runInteractiveMutation() {
       const r = ALL_RESULTS[ACTIVE_INDEX];
-      if (!r || !r.mutCatalog || !r.mutCatalog.length) return;
+      if (!r) return;
+      if (!r.mutCatalog || !r.mutCatalog.length) { render3DStructure(r, null, null); return; }
       const idx = parseInt(document.getElementById("mutResidueSelect").value || "0", 10);
       const targetAA = document.getElementById("mutTargetAASelect").value;
       const m = r.mutCatalog[idx];

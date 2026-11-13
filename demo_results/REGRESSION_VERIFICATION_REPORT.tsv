@@ -14,3 +14,4 @@ Gate_7_MultiModal	Protein_DNA_OP1_&_Ligand_SDF	SB=1_&_V2000_SDF	Verified	Verifie
 Gate_8_PTM_Gating	CPK21_pSer_SEP_vs_PP2A_Dephos	dG_Phospho=-9.81	<=-9.00_kcal/mol	Verified	PASS
 Gate_9_MetalCoord	VIP1_His145_Co2+_&_PP2A_Ca2+	Coord_Bridges=1	>=1	Verified	PASS
 Gate_10_ReleaseLock	All_12_Deliverables_&_PTM_Sync	v1.8_Master_Check	100%_Verified	100%_Verified	PASS
+Gate_11_VoxelAndUX	14A_Voxel_&_Download_&_Dephospho	UIS=0.3887/Pattern_C	100%_Synced	100%_Synced	PASS

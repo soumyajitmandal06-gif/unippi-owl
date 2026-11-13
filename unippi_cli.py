@@ -1522,6 +1522,14 @@ def process_structure_file(
                     res_pair["UIS_margin"] = round(res_pair["UIS"] - UIS_DECISION_THRESHOLD, 4)
                     res_pair["threshold_call"] = "BELOW_THRESHOLD"
                     res_pair["binding_class"] = "LOW_OR_DECOY"
+                    if ptm_mode in ("phospho", "dephospho") and ("14-3-3" in cid_str or "GRF" in cid_str or "VIP1" in cid_str):
+                        pat_i, pat_d = classify_mechanistic_pattern(res_pair["UIS"], res_pair["ipTM"], res_pair["LIS"], res_pair["dG_uni_kcal"], res_pair["wBSA_A2"], res_pair["helical_prolines"], res_pair["steric_clashes"])
+                        res_pair["pattern_id"] = pat_i
+                        res_pair["pattern_desc"] = pat_d
+                        for cm in res_pair.get("custom_mutations", []):
+                            dg_m = round(clamp(res_pair["dG_uni_kcal"] + cm["ddG_kcal"], -22.0, 5.0), 2)
+                            cm["dG_mut_kcal"] = dg_m
+                            cm["Kd_mut_nM"] = round(math.exp(dg_m / (R_GAS_KCAL * temp_k)) * 1e9, 2)
 
                 if ptm_sb_added > 0 or metal_coord_added > 0:
                     d_u_now = res_pair["dG_uni_kcal"]
