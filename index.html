@@ -1088,6 +1088,7 @@
         for (const line of lines) {
           if (line.startsWith("EXPDTA")) meta.method = line.slice(6).trim();
           else if (line.startsWith("REMARK") && (line.toUpperCase().includes("ALPHAFOLD") || line.toUpperCase().includes("PLDDT"))) meta.has_qa_header = "TRUE";
+          else if (line.startsWith("ENDMDL") && atoms.length > 0) break;
           else if (line.startsWith("ATOM  ") || line.startsWith("HETATM")) {
             const resName = line.slice(17,20).trim().toUpperCase();
             if (["HOH","WAT","DOD"].includes(resName)) continue;
@@ -2416,6 +2417,8 @@
         if (nResA <= 32) {
           seqBars += `<text x="${(x + bw/2).toFixed(1)}" y="${ch-40}" text-anchor="middle" font-size="8.5" font-family="monospace" fill="#0f172a">${THREE_TO_ONE[m.wtName]||"X"}</text>`;
           seqBars += `<text x="${(x + bw/2).toFixed(1)}" y="${ch-28}" text-anchor="middle" font-size="8" font-family="monospace" fill="#64748b">${heptadPos}</text>`;
+        } else if (idx % Math.ceil(nResA / 10) === 0) {
+          seqBars += `<text x="${(x + bw/2).toFixed(1)}" y="${ch-36}" text-anchor="middle" font-size="8" font-family="monospace" fill="#0f172a">${THREE_TO_ONE[m.wtName]||"X"}${m.resSeq}</text>`;
         }
       });
       if (document.getElementById("chumaSvgWrap")) {

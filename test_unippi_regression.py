@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 14-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 15-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 14-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 15-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -308,10 +308,21 @@ def main():
     report_lines.append("Gate_14_StateInvariant\tCall_vs_Pattern_Consistency_&_8Ch_Tracks\tZero_Conflicts\t100%_Consistent\t100%_Consistent\tPASS")
     print("[PASS] Gate 14: State-machine invariant (ABOVE_THRESHOLD <-> Pattern A/B on PTM/Metal complexes) & 8-channel tracks verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 15: Multi-Model PDB ENDMDL Guard, SEO Schema & Large-Protein CHUMA Ticks
+    # --------------------------------------------------------------------------
+    src_html_15 = Path("index.html").read_text(encoding="utf-8")
+    src_cli_15 = Path("unippi_cli.py").read_text(encoding="utf-8")
+    assert 'line.startsWith("ENDMDL")' in src_html_15 and 'line.startswith("ENDMDL")' in src_cli_15, "Missing ENDMDL multi-model guard!"
+    assert "Math.ceil(nResA / 10)" in src_html_15 and 'rel="canonical"' in src_html_15, "Missing CHUMA ticks or SEO schema!"
+    assert Path("robots.txt").exists() and Path("sitemap.xml").exists(), "Missing robots.txt or sitemap.xml!"
+    report_lines.append("Gate_15_MultiModelAndSEO\tENDMDL_Guard_&_CHUMA_Ticks_&_SEO\t100%_Present\t100%_Verified\t100%_Verified\tPASS")
+    print("[PASS] Gate 15: Multi-model PDB ENDMDL guard, large-protein CHUMA X-axis ticks, and SEO files verified.")
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 14 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 15 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

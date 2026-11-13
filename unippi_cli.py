@@ -223,6 +223,8 @@ def parse_pdb_file(filepath: str) -> Tuple[List[Atom], Dict[str, str]]:
     meta = {"method": "UNKNOWN", "has_qa_header": "FALSE"}
     with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
         for line in f:
+            if line.startswith("ENDMDL") and atoms:
+                break
             if line.startswith("EXPDTA"):
                 meta["method"] = line[6:].strip()
             elif line.startswith("REMARK") and ("ALPHAFOLD" in line.upper() or "PLDDT" in line.upper()):
