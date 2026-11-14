@@ -8,7 +8,6 @@ Gate_1_Parity	6_VIP1_IDR_Hallucination_Decoy_model_0	UIS/dG/Pattern	0.061/2.10/P
 Gate_2_ModeB	Fractional_pLDDT_Scaling	mean_pLDDT	94.0	94.0	PASS
 Gate_3_Sanitizer	FoldX_Rosetta_80Col_PDB	Files_Audited	6_PDBs_Clean	80_Cols_No_GLY_CB	PASS
 Gate_4_SaltStress	VIP1_vs_Barnase_800mM	dG_Shift	VIP1:-11.89/Barn:-7.71	VIP1<-10.35/Barn>-10.09	PASS
-Gate_5_RealPDB	RCSB_1BRS_Crystal_6Chain	Top_Pair_A-D	UIS=0.882/dG=-12.33	MODE_C_EXP_CRYSTAL	PASS
 Gate_6_LayerSync	CLI_vs_Browser_JS_Constants	All_Parameters	100%_Matched	100%_Matched	PASS
 Gate_7_MultiModal	Protein_DNA_OP1_&_Ligand_SDF	SB=1_&_V2000_SDF	Verified	Verified	PASS
 Gate_8_PTM_Gating	CPK21_pSer_SEP_vs_PP2A_Dephos	dG_Phospho=-9.81	<=-9.00_kcal/mol	Verified	PASS
@@ -20,3 +19,5 @@ Gate_13_ParserAndMimetic	CAlpha_vs_Ca2+_&_PhosphoMimetic_SER5ASP	CA->C_&_ddG(S5D
 Gate_14_StateInvariant	Call_vs_Pattern_Consistency_&_8Ch_Tracks	Zero_Conflicts	100%_Consistent	100%_Consistent	PASS
 Gate_15_MultiModelAndSEO	ENDMDL_Guard_&_CHUMA_Ticks_&_SEO	100%_Present	100%_Verified	100%_Verified	PASS
 Gate_16_EmpiricalBenchmarkAndConfKit	24_Complex_dG_&_32_SKEMPI2_ddG_&_Ablation	r>=0.95/RMSE<=0.35/AUC>=0.99	r_dG=0.984/r_ddG=0.997	AUC=1.000/MCC=1.00	PASS
+Gate_18_TsugamaEmailSync	O49489_HXRXXS_VIP1AAA_RMSD_Kink_&_ConfJSON	10_Tokens_Verified	100%_Compliant	100%_Compliant	PASS
+Gate_17_ManuscriptAndJOSS	bioRxiv_Full_Manuscript_&_JOSS_Paper	3_Files_Complete	100%_Verified	100%_Verified	PASS

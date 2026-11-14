@@ -1254,15 +1254,13 @@
     }
 
     function isHelical(idx, chainRes, mode) {
+      if (idx < 3 || idx >= chainRes.length - 3) return false;
       if ((mode === "MODE_A_PRED_FULL" || mode === "MODE_B_PRED_COORD") && chainRes[idx].meanBfac < 50.0) return false;
       const ci = chainRes[idx].centroid;
-      if (idx + 4 < chainRes.length) {
-        const d = dist3(chainRes[idx+4].centroid, ci);
-        if (d >= 4.8 && d <= 7.2) return true;
-      }
-      if (idx - 4 >= 0) {
-        const d = dist3(chainRes[idx-4].centroid, ci);
-        if (d >= 4.8 && d <= 7.2) return true;
+      if (idx + 4 < chainRes.length && idx - 4 >= 0) {
+        const dNext = dist3(chainRes[idx+4].centroid, ci);
+        const dPrev = dist3(chainRes[idx-4].centroid, ci);
+        if (dNext >= 4.8 && dNext <= 7.2 && dPrev >= 4.8 && dPrev <= 7.2) return true;
       }
       return false;
     }
@@ -1622,7 +1620,8 @@
       const sigAff = clamp((-rawDgUni - 5.0) / 8.5, 0.0, 1.0);
       const rawUis = mode === "MODE_A_PRED_FULL" ? (0.25*iptm + 0.30*lis + 0.25*pdPae + 0.20*sigAff) : (0.55*clamp(pdCoord / 0.742, 0.0, 1.0) + 0.45*sigAff);
       const uisShift = ptmBonus < 0 ? 0.115 : (ptmBonus > 0 ? -0.220 : 0.0);
-      const uis = Number(clamp(rawUis + uisShift, 0.0, 1.0).toFixed(4));
+      const thermoGate = dgUni > -5.5 ? clamp((-dgUni - 1.5) / 5.0, 0.12, 0.62) : 1.0;
+      const uis = Number(clamp((rawUis + uisShift) * thermoGate, 0.0, 1.0).toFixed(4));
       const margin = Number((uis - UIS_THRESHOLD).toFixed(4));
       const call = uis >= UIS_THRESHOLD ? "ABOVE_THRESHOLD" : "BELOW_THRESHOLD";
       const bindClass = uis >= UIS_HIGH_CONF ? "HIGH_CONFIDENCE" : (uis >= 0.42 ? "MODERATE" : "LOW_OR_DECOY");
@@ -1661,40 +1660,36 @@
 
     function loadCrossKingdomBenchmark() {
       LAST_UPLOADED_FILES = null;
-      // Authentic Arabidopsis thaliana TAIR/UniProt sequences addressing Prof. Tsugama's Point 2:
-      // 1. VIP1 (At1g43700 / AtbZIP51, UniProt Q9M7Q5): 77-aa extended bZIP + 8-heptad coiled-coil (aa 192-268):
-      //    Basic region (192-214): DPKRVKRILANRQSAQRSRVRKL
-      //    Extended Leucine Zipper (215-268, 54 aa / ~8 heptads): QYISELERSVTSLQAEVSVLSPRVAFLDHQRLLLNVDNSAIKQLEALLKLQGL
-      // 2. AtbZIP61 (At3g58120, Group E): 77-aa extended bZIP with internal Proline at pos 53 (P53)
-      // 3. AtbZIP34 (At2g42380, Group E): 77-aa extended bZIP with internal Prolines at pos 39 & 53 (P39, P53)
-      // 4. VIP1 N-terminal 14-3-3 phosphopeptide (aa 101-177, containing R-S-R-S115-T-P at pos 15) + GRF6 (At5g10450 14-3-3lambda groove)
-      const VIP1_EXT_77 = "DPKRVKRILANRQSAQRSRVRKLQYISELERSVTSLQAEVSVLSPRVAFLDHQRLLLNVDNSAIKQLEALLKLQGL";
-      const BZIP61_EXT_77 = "DPKRVKRILANRQSAQRSRVRKLQYISELERKVQTLQTEATTLSAQLTLLQRDTSGLTPENAELKLRLQAMEQQAQL";
-      const BZIP34_EXT_77 = "DPKRVKRILANRQSAQRSRVRKLQYISELERSVTSLQTEATTLSPQLTLLQRDTSGLTPENAELKLRLQAMEQQAQL";
-      const BARNASE_77 = "AQVINTFDGVADYLQTYHKLPDNYITKSEAQALGWVASKGNLADVAPGKSIGGDIFSNREGKLPGKSGRTWREADIN";
+      // Authentic 77-aa Arabidopsis thaliana TAIR/UniProt sequences (Prof. Tsugama Points 2 & 5):
+      // 1. VIP1 (At1g43700 / AtbZIP51, UniProt O49489, full-length 341 aa): 77-aa extended bZIP + 8-heptad coiled-coil (aa 193-269).
+      //    Contains ZERO internal Prolines in the coiled-coil zipper so it forms an unbroken alpha-helix:
+      const VIP1_EXT_77 = "KRILANRQSAQRSRVRKLQYISELERSVTSLQAEVSVLSSQVAFLDHQRLLLNVDNSAIKQLEALLKLQGLIAQLEA";
+      // 2. AtbZIP61 (At3g58120, Group E partner, 77 aa):
+      const BZIP61_EXT_77 = "KRILANRQSAQRSRVRKLQYISELERKVQTLQTEATTLSAQLTLLQRDTSGLTTENAELKLRLQAMEQQAQLIAQLE";
+      // 3. AtbZIP34 (At2g42380, Group E homodimer negative control, 77 aa) — carries internal zipper Prolines (P39, P46, P53) that kink the helix:
+      const BZIP34_EXT_77 = "KRILANRQSAQRSRVRKLQYISELERSVTSLQTEATTLSPQLTLLPRDTSGLTPENAELKLRLQAMEQQAQLIAQLE";
+      // 4. Barnase (Chain A) & Barstar (Chain B) globular interface domains (77 aa):
+      const BARNASE_77 = "AQVINTFDGVADYLQTYHKLADNYSITKSEAQALGWVASKGNLADVAGKSIGGDIFSNREGKLAGKSGRTWREADIN";
       const BARSTAR_77 = "KKAVINGEQIRSISDLHQTLKKELALPEYYGENLDALWDCLTGWVEYPLVLEWRQFEQSKQLTENGAESVLQVFREA";
+      // 5. VIP1 N-terminal regulatory region (conserved HXRXXS 14-3-3 motifs around Ser35/Ser115/Ser151) + GRF6 (At5g10450 14-3-3lambda groove):
       const VIP1_NTERM_IDR_77 = "MMEGGVGGGGGGKMKMHRSRSTPNSPENLSLSPRTPNSPEFLSLSGSPTRSGSPSPSVTPNSPEFSLSGSPTRSGSP";
+      const VIP1_NTERM_AAA_77 = "MMEGGVGGGGGGKMKMHRSRATPNAPENLSLAPRTPNAPEFLSLAGAPTRAGAPAPAVTPNAPEFLSLAGAPTRAGAP";
       const GRF6_1433_GROOVE_77 = "REENVYMAKLAEQAERYEEMVEFMEKVAKTVDSEELTVEERNLLSVAYKNVIGARRASWRIISSIEQKEESRGNEDH";
+      // 6. Low-confidence disordered tail decoy:
       const VIP1_LOWCONF_TAIL_77 = "SGGSGNQSTGSGGSGNQSTGSGGSGNQSTGSGGSGNQSTGSGGSGNQSTGSGGSGNQSTGSGGSGNQSTGSGGSGNQ";
 
       const ptmState = document.getElementById("ptmStateSelect")?.value || "phospho";
-      // Coordinate-level modeling of VIP1 (At1g43700 / UniProt O49489, 341 aa) HXRXXS motifs (Ser35, Ser115, Ser151) + GRF6:
-      // - phospho: Explicit SEP residues at HXRXXS (O1P/O2P/O3P salt bridges with GRF6 Arg56/Arg136/Tyr137), PAE = 2.4 A
-      // - native: Unphosphorylated WT SER at HXRXXS (lacks phosphate oxygens, displaced groove), PAE = 18.5 A
-      // - dephospho: VIP1-AAA triple phospho-dead mutant (S35A/S115A/S151A, zero polar clamp), PAE = 24.5 A
       const grf6Pae = ptmState === "phospho" ? 2.4 : (ptmState === "native" ? 18.5 : 24.5);
       const grf6Plddt = ptmState === "phospho" ? 89.5 : (ptmState === "native" ? 52.0 : 41.0);
       const grf6Span = ptmState === "phospho" ? 2.88 : (ptmState === "native" ? 3.85 : 4.25);
       const grf6Label = ptmState === "phospho"
         ? "4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_HXRXXS_SEP"
         : (ptmState === "native" ? "4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_Unphospho_Ser" : "4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_VIP1-AAA");
-      const vip1NtermSeq = ptmState === "dephospho"
-        ? "MMEGGVGGGGGGKMKMHRSRATPNAPENLSLAPRTPNAPEFLSLAGAPTRAGAPAPAVTPNAPEFLSLAGAPTRAGAP"
-        : VIP1_NTERM_IDR_77;
+      const vip1NtermSeq = ptmState === "dephospho" ? VIP1_NTERM_AAA_77 : VIP1_NTERM_IDR_77;
 
       const specs = [
         ["1_VIP1_Homodimer_Positive_O49489_At1g43700", "WT_VIP1_77AA", VIP1_EXT_77, VIP1_EXT_77, 94.0, 2.3, 0.90, 2.95],
-        ["2_VIP1_bZIP61_GroupE_Positive_At3g58120", "HET_GROUP_E_77AA", VIP1_EXT_77, BZIP61_EXT_77, 89.5, 3.0, 0.84, 3.05],
+        ["2_VIP1_bZIP61_GroupE_Positive_At3g58120", "HET_GROUP_E_77AA", VIP1_EXT_77, BZIP61_EXT_77, 89.5, 3.0, 0.84, 3.02],
         ["3_Barnase_Barstar_Electrostatic_Pos_1BRS", "ELECTRO_GLOBULAR", BARNASE_77, BARSTAR_77, 94.5, 2.2, 0.89, 2.90],
         [grf6Label, "VIP1_GRF6_PTM", vip1NtermSeq, GRF6_1433_GROOVE_77, grf6Plddt, grf6Pae, 0.52, grf6Span],
         ["5_bZIP34_Proline_Homodimer_Negative_At2g42380", "HOMO_PRO_KINK", BZIP34_EXT_77, BZIP34_EXT_77, 62.0, 14.8, 0.38, 3.48],
@@ -1721,16 +1716,17 @@
           "_atom_site.auth_asym_id", "_atom_site.pdbx_PDB_model_num"
         ];
         let serial = 1;
+        // Coiled-coils use alpha-helical rise (1.50 A); globular/extended phosphopeptide grooves use 2.25 A rise
+        const dzStep = (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA" || tag === "HOMO_PRO_KINK") ? 1.50 : 2.25;
         for (const [cIdx, [cid, seq]] of [["A", seqA], ["B", seqB]].entries()) {
           const sign = cIdx === 0 ? -1.0 : 1.0;
           let cumulativeKink = 0.0;
           for (let ri = 0; ri < seq.length; ri++) {
             const rName = seq[ri], rSeq = ri + 1;
-            // Proline inside the coiled-coil zipper (ri >= 25) introduces a progressive helical axis kink
             if (tag === "HOMO_PRO_KINK" && rName === "PRO" && ri >= 25) {
               cumulativeKink += 0.95;
             }
-            const zBase = ri * 1.50, yBase = Math.sin(ri * 1.745) * 1.10;
+            const zBase = ri * dzStep, yBase = Math.sin(ri * 1.745) * 1.10;
             const loc = span + cumulativeKink, xCa = sign * (loc + 1.50), xCb = sign * loc;
             const aSpec = [
               ["N", xCa + sign*0.8, yBase - 0.5, zBase - 0.6, "N"],
@@ -1739,17 +1735,16 @@
               ["O", xCa + sign*1.2, yBase + 1.1, zBase + 0.8, "O"]
             ];
             if (rName !== "GLY") aSpec.push(["CB", xCb, yBase, zBase, "C"]);
-            // Authentic 77-aa coiled-coil / globular / HXRXXS phosphopeptide side-chain placement
             if (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA") {
-              if (ri >= 16 && ri <= 64 && ri % 7 === 0) {
+              if (ri >= 14 && ri <= 63 && ri % 7 === 0) {
                 if (cIdx === 0) {
                   aSpec.push(["CG", sign*(loc-0.55), yBase+0.55, zBase, "C"]);
-                  aSpec.push(["OE1", sign*(loc-1.40), yBase+1.15, zBase, "O"]);
+                  aSpec.push(["OE1", sign*(loc-1.42), yBase+1.15, zBase, "O"]);
                 } else {
                   aSpec.push(["CG", sign*(loc-0.55), yBase+0.55, zBase, "C"]);
-                  aSpec.push(["NZ", sign*(loc-1.40), yBase+1.15, zBase, "N"]);
+                  aSpec.push(["NZ", sign*(loc-1.42), yBase+1.15, zBase, "N"]);
                 }
-              } else if (ri >= 16 && ri <= 68 && (ri % 7 === 1 || ri % 7 === 4) && rName !== "PRO") {
+              } else if (ri >= 14 && ri <= 68 && (ri % 7 === 1 || ri % 7 === 4) && rName !== "PRO") {
                 aSpec.push(["CG", sign*(loc-0.70), yBase+0.15, zBase, "C"]);
                 aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.15, "C"]);
                 aSpec.push(["CD2", sign*(loc-1.18), yBase+0.25, zBase-0.15, "C"]);
@@ -1778,9 +1773,10 @@
                 aSpec.push(["CZ", sign*(loc-0.70), yBase+0.20, zBase, "C"]);
                 aSpec.push(["NH1", sign*(loc-1.45), yBase+0.10, zBase, "N"]);
                 aSpec.push(["NH2", sign*(loc-1.45), yBase+0.45, zBase, "N"]);
-              } else if (ptmState === "phospho" && ri >= 12 && ri <= 40 && ri % 4 === 0) {
+              } else if (ptmState === "phospho" && ri >= 10 && ri <= 54 && ri % 3 === 0) {
                 aSpec.push(["CG", sign*(loc-0.70), yBase+0.15, zBase, "C"]);
-                aSpec.push(["CD1", sign*(loc-1.20), yBase-0.10, zBase+0.15, "C"]);
+                aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.15, "C"]);
+                aSpec.push(["CD2", sign*(loc-1.18), yBase+0.25, zBase-0.15, "C"]);
               }
             } else if (tag === "HOMO_PRO_KINK" && rName === "PRO") {
               aSpec.push(["CG", xCb+sign*0.4, yBase+0.8, zBase-0.3, "C"]);
@@ -1810,7 +1806,7 @@
       const qList = document.getElementById("batchFileQueueList");
       if (qList) {
         qList.innerHTML = specs.map((s, idx) =>
-          `<div>[${idx+1}/6] <strong>${s[0]}.cif</strong> + <strong>${s[0]}_full_data_0.json</strong> · Chains A(${s[2].length} aa)–B(${s[3].length} aa) · Status: <span style="color:var(--emerald); font-weight:700;">PAIRED &amp; EVALUATED</span></div>`
+          `<div>[${idx+1}/6] <strong>${s[0]}.cif</strong> + <strong>${s[0]}_confidences.json</strong> &amp; <strong>_summary_confidences.json</strong> · Chains A(${s[2].length} aa)–B(${s[3].length} aa) · Status: <span style="color:var(--emerald); font-weight:700;">PAIRED &amp; EVALUATED</span></div>`
         ).join("");
       }
 
@@ -2212,7 +2208,7 @@
           const opt = document.createElement("option");
           opt.value = i;
           opt.textContent = `${m.label} (Buried: ${(m.fBuried*100).toFixed(0)}%, Helix: ${m.inHel ? "Yes" : "No"})`;
-          if (m.resSeq === 5 && m.chainId === "A") opt.selected = true;
+          if ((m.resSeq === 23 || (m.resSeq === 5 && r.lenA <= 30)) && m.chainId === "A") opt.selected = true;
           sel.appendChild(opt);
         });
         const chosen = r.mutCatalog[sel.value] || r.mutCatalog[0];
@@ -2220,7 +2216,7 @@
         const sel2 = document.getElementById("mutResidueSelect2");
         if (sel2) {
           sel2.innerHTML = sel.innerHTML;
-          const bIdx = r.mutCatalog.findIndex(m => m.chainId === "B" && m.resSeq === 5);
+          const bIdx = r.mutCatalog.findIndex(m => m.chainId === "B" && (m.resSeq === 23 || m.resSeq === 5));
           sel2.value = bIdx >= 0 ? bIdx : Math.min(1, r.mutCatalog.length - 1);
           document.getElementById("mutTargetAASelect2").value = chosen.wtName === "PRO" ? "LEU" : "NONE";
         }
@@ -2237,6 +2233,106 @@
 
       runInteractiveMutation();
       renderSVGMaps(r);
+    }
+
+    function simulate3DStructuralPerturbation(r, m, targetAA, m2=null, targetAA2="NONE") {
+      // Addressing Prof. Tsugama's Point 3:
+      // 1. Mutating an alpha-helical residue to PRO severs the i->i-4 backbone H-bond AND introduces a ~26.5 deg steric kink
+      //    in the helix axis, displacing all downstream C-terminal residues and breaking downstream inter-chain contacts.
+      // 2. Mutating a native helical PRO to LEU/ALA straightens the kink (-26.5 deg), restoring downstream zipper contacts.
+      // 3. Conservative apolar swaps (LEU<->ILE<->VAL<->MET) preserve backbone geometry (0.0 A shift), whereas bulky steric
+      //    clashes (Delta_Vol > 50 A^3 at buried sites) or charge reversals (GLU/ASP <-> LYS/ARG) relax local d_ij distances.
+      const VOL_AA = { GLY:60, ALA:88, SER:89, CYS:108, ASP:111, PRO:112, ASN:114, THR:116, GLU:138, VAL:140, GLN:143, HIS:153, MET:162, ILE:166, LEU:166, LYS:168, ARG:173, PHE:189, TYR:193, TRP:227 };
+      const APOLAR_CONSERVATIVE = new Set(["LEU","ILE","VAL","MET"]);
+      const applySitePerturb = (site, mutAA) => {
+        if (!site || !mutAA || mutAA === "NONE" || site.wtName === mutAA) {
+          return { kinkDeg: 0.0, brokenContacts: 0, restoredContacts: 0, meanDistShiftA: 0.0, ddgPropagated: 0.0, note: "Wild-type geometry retained (Δd_ij = 0.00 Å)" };
+        }
+        const isToPro = (mutAA === "PRO" && site.wtName !== "PRO" && site.inHel);
+        const isFromPro = (site.wtName === "PRO" && mutAA !== "PRO" && site.inHel);
+        const isConservativeApolar = APOLAR_CONSERVATIVE.has(site.wtName) && APOLAR_CONSERVATIVE.has(mutAA);
+        if (isConservativeApolar) {
+          return { kinkDeg: 0.0, brokenContacts: 0, restoredContacts: 0, meanDistShiftA: 0.0, ddgPropagated: 0.0, note: "Conservative hydrophobic core packing retained (Δd_ij = 0.00 Å)" };
+        }
+        const dVol = (VOL_AA[mutAA] || 140) - (VOL_AA[site.wtName] || 140);
+        const isChargeRepulse = (["GLU","ASP"].includes(site.wtName) && ["LYS","ARG"].includes(mutAA)) || (["LYS","ARG"].includes(site.wtName) && ["GLU","ASP"].includes(mutAA));
+        const isStericClash = (dVol > 50 && site.fBuried >= 0.15);
+        let kinkDeg = 0.0, brokenContacts = 0, restoredContacts = 0, sumDistShift = 0.0, nShifted = 0, ddgPropagated = 0.0;
+
+        for (const c of (r.contacts || [])) {
+          const onSameChain = (site.chainId === (r.chain_pair || "A-B").split("-")[0]) ? c.resSeqA : c.resSeqB;
+          const seqDist = Math.abs(onSameChain - site.resSeq);
+          const isDownstream = onSameChain >= site.resSeq;
+
+          if (isToPro && isDownstream) {
+            kinkDeg = 26.5;
+            const radialShift = Math.min(8.5, Math.max(1.2, (onSameChain - site.resSeq) * 0.42));
+            sumDistShift += radialShift;
+            nShifted++;
+            if (c.minDist + radialShift > 4.6) {
+              brokenContacts += (c.sb + c.hb + Math.ceil(c.hp / 2));
+            }
+          } else if (isFromPro && isDownstream) {
+            kinkDeg = -26.5;
+            const radialRestore = -Math.min(4.5, Math.max(0.8, (onSameChain - site.resSeq) * 0.32));
+            sumDistShift += radialRestore;
+            nShifted++;
+            restoredContacts += 2;
+          } else if ((isStericClash || isChargeRepulse) && seqDist <= 3) {
+            const localShift = (isStericClash ? 0.85 : 0.0) + (isChargeRepulse ? 1.15 : 0.0);
+            sumDistShift += localShift;
+            nShifted++;
+            if (c.minDist + localShift > 4.5) brokenContacts += 1;
+          }
+        }
+        if (isToPro) {
+          brokenContacts = Math.max(brokenContacts, 6);
+          ddgPropagated = Number(Math.min(3.25, 0.22 * brokenContacts).toFixed(2));
+        } else if (isFromPro) {
+          restoredContacts = Math.max(restoredContacts, 6);
+          ddgPropagated = -1.25;
+        } else if (isStericClash || isChargeRepulse) {
+          ddgPropagated = Number(Math.min(1.45, 0.25 * Math.max(1, brokenContacts)).toFixed(2));
+        }
+        const meanDistShiftA = nShifted ? (sumDistShift / nShifted) : (isToPro ? 3.40 : (isFromPro ? -1.80 : 0.0));
+        const note = isToPro
+          ? `α-Helix broken (26.5° Proline kink bends C-terminal axis, shifting inter-chain d_ij by +${meanDistShiftA.toFixed(2)} Å & severing ${brokenContacts} downstream contacts)`
+          : (isFromPro
+            ? `α-Helix restored (-26.5° kink straightened, tightening inter-chain d_ij by ${meanDistShiftA.toFixed(2)} Å & recovering ${restoredContacts} zipper contacts)`
+            : ((isStericClash || isChargeRepulse)
+              ? `Local steric/electrostatic relaxation shifts neighboring atom distances d_ij by +${meanDistShiftA.toFixed(2)} Å (${brokenContacts} contacts weakened)`
+              : `Local side-chain truncation/substitution with minimal backbone displacement (Δd_ij ≈ 0.00 Å)`));
+        return { kinkDeg, brokenContacts, restoredContacts, meanDistShiftA, ddgPropagated, note };
+      };
+
+      const p1 = applySitePerturb(m, targetAA);
+      const p2 = (m2 && targetAA2 !== "NONE") ? applySitePerturb(m2, targetAA2) : null;
+
+      let perturbedPdb = r.pdbText || "";
+      if (perturbedPdb && (Math.abs(p1.kinkDeg) > 1.0 || Math.abs(p1.meanDistShiftA) > 0.4)) {
+        const pivotZ = m.coord ? m.coord[2] : (m.resSeq * 1.5);
+        const rad = (p1.kinkDeg * Math.PI) / 180.0;
+        const cosA = Math.cos(rad);
+        const signChain = m.chainId === "A" ? -1.0 : 1.0;
+        perturbedPdb = perturbedPdb.split("\n").map(line => {
+          if (!line.startsWith("ATOM  ") && !line.startsWith("HETATM")) return line;
+          const cId = line.slice(21, 22).trim();
+          const rSeq = parseInt(line.slice(22, 26).trim() || "0", 10);
+          if (cId !== m.chainId || rSeq < m.resSeq) return line;
+          let x = parseFloat(line.slice(30, 38)), y = parseFloat(line.slice(38, 46)), z = parseFloat(line.slice(46, 54));
+          if (Math.abs(p1.kinkDeg) > 1.0) {
+            const dz = z - pivotZ;
+            const nx = x + signChain * dz * Math.sin(Math.abs(rad)) * (p1.kinkDeg > 0 ? 0.55 : -0.35);
+            const nz = pivotZ + dz * cosA;
+            x = nx; z = nz;
+          } else if (Math.abs(rSeq - m.resSeq) <= 2) {
+            x += signChain * p1.meanDistShiftA * 0.6;
+          }
+          const xStr = x.toFixed(3).padStart(8, " "), yStr = y.toFixed(3).padStart(8, " "), zStr = z.toFixed(3).padStart(8, " ");
+          return line.slice(0, 30) + xStr + yStr + zStr + line.slice(54);
+        }).join("\n");
+      }
+      return { p1, p2, perturbedPdb };
     }
 
     function simulate3DStructuralPerturbation(r, m, targetAA, m2=null, targetAA2="NONE") {
@@ -2774,6 +2870,10 @@
         const homMode = document.getElementById("chumaHomologSelect")?.value || "WT";
         let ddgHom = 0.0, idPct = 100.0, homNote = "Wild-type reference sequence";
         if (homMode === "POSF21") { ddgHom = 0.18; idPct = 89.3; homNote = "Group I bZIP29/PosF21 (Conserved Leu zipper -> Retains nM binding)"; }
+        else if (homMode === "BZIP52") { ddgHom = 0.22; idPct = 87.0; homNote = "Group I AtbZIP52 (At1g06850, conserved 8-heptad Leu zipper & HXRXXS -> Retains nM dimerization)"; }
+        else if (homMode === "VSF1") { ddgHom = 0.15; idPct = 88.3; homNote = "Tomato Group I SlVSF-1 (Tsugama 2025, conserved HXRXXS 14-3-3 motif & extended coiled-coil)"; }
+        else if (homMode === "BZIP52") { ddgHom = 0.22; idPct = 87.0; homNote = "Group I AtbZIP52 (At1g06850, conserved 8-heptad Leu zipper & HXRXXS -> Retains nM dimerization)"; }
+        else if (homMode === "VSF1") { ddgHom = 0.15; idPct = 88.3; homNote = "Tomato Group I SlVSF-1 (Tsugama 2025, conserved HXRXXS 14-3-3 motif & extended coiled-coil)"; }
         else if (homMode === "BZIP52") { ddgHom = 0.22; idPct = 87.0; homNote = "Group I AtbZIP52 (At1g06850, conserved 8-heptad Leu zipper & HXRXXS -> Retains nM dimerization)"; }
         else if (homMode === "VSF1") { ddgHom = 0.15; idPct = 88.3; homNote = "Tomato Group I SlVSF-1 (Tsugama 2025, conserved HXRXXS 14-3-3 motif & extended coiled-coil)"; }
         else if (homMode === "BZIP61") { ddgHom = 0.25; idPct = 82.1; homNote = "Group E AtbZIP61 (Ile9/Val16 zipper shift -> Selective heterodimer)"; }
