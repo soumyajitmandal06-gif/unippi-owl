@@ -350,6 +350,9 @@ def main():
     assert "ELAALEKEVAALEKEIAALEKELAALEK" not in src_html_18, "Synthetic 28-aa ELAALEK sequence must be 100% removed!"
     assert 'const VIP1_EXT_77 = "KRILANRQSAQRSRVRKLQYISELERSVTSLQAEVSVLSSQVAFLDHQRLLLNVDNSAIKQLEALLKLQGLIAQLEA";' in src_html_18 and "P" not in "KRILANRQSAQRSRVRKLQYISELERSVTSLQAEVSVLSSQVAFLDHQRLLLNVDNSAIKQLEALLKLQGLIAQLEA", "VIP1 zipper must have 0 Prolines!"
     assert "thermoGate" in src_html_18 and "APOLAR_CONSERVATIVE" in src_html_18, "Missing thermodynamic feasibility gate or conservative apolar check!"
+    assert src_html_18.count("function simulate3DStructuralPerturbation(") == 1, "Duplicate simulate3DStructuralPerturbation function!"
+    assert 'const wtSel = document.getElementById("wtStructCompareSelect");' in src_html_18, "Missing comparator population in renderActiveComplex!"
+    assert "SB_DONOR_IDX" in src_html_18 and "PTM_SEP_IDX" in src_html_18, "Missing authentic salt-bridge & SEP contact registers!"
     for token_18 in (
         "O49489",
         "At1g43700",
