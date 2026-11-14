@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 19-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 20-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 19-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 20-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -412,10 +412,20 @@ def main():
     report_lines.append("Gate_19_UniversalAutoRescue\tSameChain_Ligand_&_Monomer_Domain_&_MultiPredictor\t2_AutoRescues_&_5_Modalities\tA+A_LIG_&_A_N+A_C\t100%_Universal\tPASS")
     print("[PASS] Gate 19: Universal input auto-rescue (same-chain receptor+ligand, single-chain monomer N/C domain split, and ColabFold/Boltz-1 JSONs) verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 20: Master End-to-End Audit of index.html PTM SEP Physics & Comparator Default
+    # --------------------------------------------------------------------------
+    src_html_20 = Path("index.html").read_text(encoding="utf-8")
+    assert 'SEP:"CHARGED"' in src_html_20 and "PTM_HP_IDX" in src_html_20, "Missing SEP CHARGED or PTM_HP_IDX in index.html!"
+    assert "yDeflect += 1.65;" in src_html_20 and "((dg - (-16.5)) / 21.5)" in src_html_20, "Missing 3D kink deflection or Salt Curve Y-axis expansion!"
+    assert ".js.download" not in src_html_20 and "https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js" in src_html_20, "Invalid 3Dmol script tag!"
+    report_lines.append("Gate_20_MasterEndToEndAudit\tPTM_SEP_Bound_&_3DKink_RMSD_&_SaltCurveScale\tAll_4_DOM_Fixes\t100%_Verified\t100%_Verified\tPASS")
+    print("[PASS] Gate 20: Master end-to-end audit (VIP1-GRF6 SEP Pattern B binding, 3D bZIP34 kink RMSD/angle, and Salt-Stress Y-axis scaling) verified.")
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 19 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 20 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

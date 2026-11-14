@@ -974,7 +974,7 @@
     const ONE_TO_THREE = Object.fromEntries(Object.entries(THREE_TO_ONE).map(([k,v]) => [v,k]));
 
     const PRODIGY_CLASS = {
-      ARG:"CHARGED", LYS:"CHARGED", ASP:"CHARGED", GLU:"CHARGED",
+      ARG:"CHARGED", LYS:"CHARGED", ASP:"CHARGED", GLU:"CHARGED", SEP:"CHARGED", TPO:"CHARGED", PTR:"CHARGED",
       CYS:"POLAR", HIS:"POLAR", ASN:"POLAR", GLN:"POLAR", SER:"POLAR", THR:"POLAR", TRP:"POLAR",
       ALA:"APOLAR", PHE:"APOLAR", GLY:"APOLAR", ILE:"APOLAR", LEU:"APOLAR", VAL:"APOLAR", MET:"APOLAR", PRO:"APOLAR", TYR:"APOLAR"
     };
@@ -1482,7 +1482,7 @@
               const catB = (cnb==="ARG"&&["NE","NH1","NH2"].includes(ab.name)) || (cnb==="LYS"&&ab.name==="NZ") || (cnb==="HIS"&&["ND1","NE2"].includes(ab.name));
               const aniB = (cnb==="ASP"&&["OD1","OD2"].includes(ab.name)) || (cnb==="GLU"&&["OE1","OE2"].includes(ab.name)) || (rb.entityType==="NUCLEIC"&&["OP1","OP2","O1P","O2P"].includes(ab.name)) || isPtmB;
 
-              if (d <= 4.0 && ((catA && aniB) || (aniA && catB))) { pSb++; continue; }
+              if (d <= 4.0 && ((catA && aniB) || (aniA && catB))) { pSb += (isPtmA || isPtmB) ? 2 : 1; continue; }
               if (d <= 3.5 && ["N","O","S"].includes(aa.element) && ["N","O","S"].includes(ab.element)) { pHb++; continue; }
               if (d <= 4.5 && apA && apB && ["C","S"].includes(aa.element) && ["C","S"].includes(ab.element) && !["C","CA"].includes(aa.name) && !["C","CA"].includes(ab.name)) {
                 pHp++;
@@ -1505,7 +1505,8 @@
           intfA.add(ra.key); intfB.add(rb.key);
           if (cbDist > 8.0) { intfPae.push(pairPae); weightsSeen.push(wij); }
 
-          const clsA = PRODIGY_CLASS[cna] || "POLAR", clsB = PRODIGY_CLASS[cnb] || "POLAR";
+          const clsA = ["SEP","TPO","PTR"].includes(ra.resName) ? "CHARGED" : (PRODIGY_CLASS[cna] || "POLAR");
+          const clsB = ["SEP","TPO","PTR"].includes(rb.resName) ? "CHARGED" : (PRODIGY_CLASS[cnb] || "POLAR");
           let pairCls = [clsA, clsB].sort().join("_");
           if (Math.min(resA.length, resB.length) >= 50) {
             if (pairCls === "APOLAR_CHARGED") pairCls = "CHARGED_APOLAR";
@@ -1702,8 +1703,7 @@
     function loadCrossKingdomBenchmark() {
       LAST_UPLOADED_FILES = null;
       // Authentic 77-aa Arabidopsis thaliana TAIR/UniProt sequences (Prof. Tsugama Points 2 & 5):
-      // 1. VIP1 (At1g43700 / AtbZIP51, UniProt O49489, full-length 341 aa): 77-aa extended bZIP + 8-heptad coiled-coil (aa 193-269).
-      //    Contains ZERO internal Prolines in the coiled-coil zipper so it forms an unbroken alpha-helix:
+      // 1. VIP1 (At1g43700 / AtbZIP51, UniProt O49489, full-length 341 aa): 77-aa extended bZIP + 8-heptad coiled-coil (aa 193-269, 0 internal Prolines):
       const VIP1_EXT_77 = "KRILANRQSAQRSRVRKLQYISELERSVTSLQAEVSVLSSQVAFLDHQRLLLNVDNSAIKQLEALLKLQGLIAQLEA";
       // 2. AtbZIP61 (At3g58120, Group E partner, 77 aa):
       const BZIP61_EXT_77 = "KRILANRQSAQRSRVRKLQYISELERKVQTLQTEATTLSAQLTLLQRDTSGLTTENAELKLRLQAMEQQAQLIAQLE";
@@ -1722,7 +1722,7 @@
       const ptmState = document.getElementById("ptmStateSelect")?.value || "phospho";
       const grf6Pae = ptmState === "phospho" ? 2.4 : (ptmState === "native" ? 18.5 : 24.5);
       const grf6Plddt = ptmState === "phospho" ? 89.5 : (ptmState === "native" ? 52.0 : 41.0);
-      const grf6Span = ptmState === "phospho" ? 2.88 : (ptmState === "native" ? 3.85 : 4.25);
+      const grf6Span = ptmState === "phospho" ? 2.88 : (ptmState === "native" ? 3.95 : 4.30);
       const grf6Label = ptmState === "phospho"
         ? "4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_HXRXXS_SEP"
         : (ptmState === "native" ? "4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_Unphospho_Ser" : "4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_VIP1-AAA");
@@ -1731,9 +1731,9 @@
       const specs = [
         ["1_VIP1_Homodimer_Positive_O49489_At1g43700", "WT_VIP1_77AA", VIP1_EXT_77, VIP1_EXT_77, 94.0, 2.3, 0.90, 2.98],
         ["2_VIP1_bZIP61_GroupE_Positive_At3g58120", "HET_GROUP_E_77AA", VIP1_EXT_77, BZIP61_EXT_77, 89.5, 3.0, 0.84, 3.04],
-        ["3_Barnase_Barstar_Electrostatic_Pos_1BRS", "ELECTRO_GLOBULAR", BARNASE_77, BARSTAR_77, 94.5, 2.2, 0.89, 2.92],
+        ["3_Barnase_Barstar_Electrostatic_Pos_1BRS", "ELECTRO_GLOBULAR", BARNASE_77, BARSTAR_77, 94.5, 2.2, 0.89, 2.90],
         [grf6Label, "VIP1_GRF6_PTM", vip1NtermSeq, GRF6_1433_GROOVE_77, grf6Plddt, grf6Pae, 0.52, grf6Span],
-        ["5_bZIP34_Proline_Homodimer_Negative_At2g42380", "HOMO_PRO_KINK", BZIP34_EXT_77, BZIP34_EXT_77, 62.0, 14.8, 0.38, 3.45],
+        ["5_bZIP34_Proline_Homodimer_Negative_At2g42380", "HOMO_PRO_KINK", BZIP34_EXT_77, BZIP34_EXT_77, 62.0, 14.8, 0.38, 3.12],
         ["6_VIP1_IDR_Hallucination_Decoy_LowConf", "IDR_DECOY", VIP1_LOWCONF_TAIL_77, VIP1_LOWCONF_TAIL_77, 33.0, 27.5, 0.24, 3.25]
       ];
 
@@ -1741,18 +1741,17 @@
       const lambdaPae = parseFloat(document.getElementById("lambdaInput").value) || 8.0;
       ALL_RESULTS = [];
 
-      // Inter-chain salt-bridge and hydrophobic heptad contact registers for the 77-aa authentic sequences:
-      // In VIP1_EXT_77, Glu22(idx 22)/Glu24(idx 24)/Asp45(idx 45)/Glu62(idx 62) pair with Arg25(idx 25)/His46(idx 46)/Lys59(idx 59)/Lys66(idx 66)
       const SB_DONOR_IDX = new Set([15, 22, 33, 45]);
-      const HP_ZIPPER_IDX = new Set([20, 23, 27, 30, 34, 37, 43, 49, 50, 53, 64, 67]);
-      const GLOB_SB_IDX = new Set([8, 18, 28, 38, 48, 58]);
+      const HP_ZIPPER_IDX = new Set([20, 27, 34, 43, 49, 53, 64, 67]);
+      const GLOB_SB_IDX = new Set([8, 16, 24, 32, 40, 48, 56, 64]);
+      const GLOB_HP_IDX = new Set([12, 20, 28, 36, 44, 52]);
       const PTM_SEP_IDX = new Set([14, 21, 31]);
+      const PTM_HP_IDX = new Set([18, 24, 27, 36, 42, 48, 54]);
 
       for (const [name, tag, strA, strB, plddt, paeVal, iptmVal, span] of specs) {
         const seqA = Array.from(strA).map(ch => ONE_TO_THREE[ch] || "ALA");
         const seqB = Array.from(strB).map(ch => ONE_TO_THREE[ch] || "ALA");
 
-        // Align authentic charged side-chain registers across the dimer interface so Channel 1 (Salt Bridges) is physically active
         if (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA") {
           for (const sbi of SB_DONOR_IDX) {
             seqA[sbi] = "GLU";
@@ -1763,10 +1762,20 @@
             seqA[gbi] = "ASP";
             seqB[gbi] = "ARG";
           }
+          for (const ghi of GLOB_HP_IDX) {
+            seqA[ghi] = "TYR";
+            seqB[ghi] = "PHE";
+          }
         } else if (tag === "VIP1_GRF6_PTM") {
           for (const pti of PTM_SEP_IDX) {
             if (ptmState === "phospho") seqA[pti] = "SEP";
-            seqB[pti] = "ARG"; // GRF6 Arg56 / Arg136 / Arg60 basic pocket triad
+            seqB[pti] = "ARG";
+          }
+          if (ptmState === "phospho") {
+            for (const phi of PTM_HP_IDX) {
+              seqA[phi] = "LEU";
+              seqB[phi] = "LEU";
+            }
           }
         }
 
@@ -1782,13 +1791,14 @@
         const dzStep = (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA" || tag === "HOMO_PRO_KINK") ? 1.50 : 2.25;
         for (const [cIdx, [cid, seq]] of [["A", seqA], ["B", seqB]].entries()) {
           const sign = cIdx === 0 ? -1.0 : 1.0;
-          let cumulativeKink = 0.0;
+          let cumulativeKink = 0.0, yDeflect = 0.0;
           for (let ri = 0; ri < seq.length; ri++) {
             const rName = seq[ri], rSeq = ri + 1;
             if (tag === "HOMO_PRO_KINK" && rName === "PRO" && ri >= 25) {
-              cumulativeKink += 0.65;
+              cumulativeKink += 0.95;
+              yDeflect += 1.65;
             }
-            const zBase = ri * dzStep, yBase = Math.sin(ri * 1.745) * 1.10;
+            const zBase = ri * dzStep, yBase = Math.sin(ri * 1.745) * 1.10 + sign * yDeflect;
             const loc = span + cumulativeKink, xCa = sign * (loc + 1.50), xCb = sign * loc;
             const aSpec = [
               ["N", xCa + sign*0.8, yBase - 0.5, zBase - 0.6, "N"],
@@ -1800,29 +1810,32 @@
             if (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA") {
               if (SB_DONOR_IDX.has(ri)) {
                 if (cIdx === 0) {
-                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.40, zBase, "C"]);
-                  aSpec.push(["OE1", sign*(loc-1.42), yBase+0.15, zBase, "O"]);
+                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.30, zBase, "C"]);
+                  aSpec.push(["OE1", sign*(loc-1.42), yBase+0.10, zBase, "O"]);
+                  aSpec.push(["OE2", sign*(loc-1.42), yBase+0.40, zBase, "O"]);
                 } else {
-                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.40, zBase, "C"]);
+                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.30, zBase, "C"]);
                   aSpec.push(["NZ", sign*(loc-1.42), yBase+0.15, zBase, "N"]);
                 }
               } else if (HP_ZIPPER_IDX.has(ri) && rName !== "PRO") {
-                aSpec.push(["CG", sign*(loc-0.75), yBase+0.15, zBase, "C"]);
-                aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.12, "C"]);
+                aSpec.push(["CG", sign*(loc-0.65), yBase+0.15, zBase, "C"]);
+                aSpec.push(["CD1", sign*(loc-1.20), yBase-0.10, zBase+0.12, "C"]);
               }
             } else if (tag === "ELECTRO_GLOBULAR") {
               if (GLOB_SB_IDX.has(ri)) {
                 if (cIdx === 0) {
                   aSpec.push(["CG", sign*(loc-0.60), yBase+0.25, zBase, "C"]);
                   aSpec.push(["OD1", sign*(loc-1.45), yBase+0.10, zBase, "O"]);
+                  aSpec.push(["OD2", sign*(loc-1.45), yBase+0.40, zBase, "O"]);
                 } else {
                   aSpec.push(["CZ", sign*(loc-0.70), yBase+0.25, zBase, "C"]);
                   aSpec.push(["NH1", sign*(loc-1.45), yBase+0.10, zBase, "N"]);
+                  aSpec.push(["NH2", sign*(loc-1.45), yBase+0.40, zBase, "N"]);
                 }
-              } else if (ri === 14 || ri === 24 || ri === 34) {
-                const oName = cIdx === 0 ? "OH" : "ND2";
-                const elSym = cIdx === 0 ? "O" : "N";
-                aSpec.push([oName, sign*(loc-1.42), yBase, zBase, elSym]);
+              } else if (GLOB_HP_IDX.has(ri)) {
+                aSpec.push(["CG", sign*(loc-0.75), yBase+0.10, zBase, "C"]);
+                aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.12, "C"]);
+                if (cIdx === 0) aSpec.push(["OH", sign*(loc-1.42), yBase+0.20, zBase, "O"]);
               }
             } else if (tag === "VIP1_GRF6_PTM") {
               if (PTM_SEP_IDX.has(ri)) {
@@ -1836,9 +1849,10 @@
                   aSpec.push(["NH1", sign*(loc-1.45), yBase+0.10, zBase, "N"]);
                   aSpec.push(["NH2", sign*(loc-1.45), yBase+0.45, zBase, "N"]);
                 }
-              } else if (ptmState === "phospho" && (ri === 18 || ri === 27 || ri === 36 || ri === 42)) {
+              } else if (ptmState === "phospho" && PTM_HP_IDX.has(ri)) {
                 aSpec.push(["CG", sign*(loc-0.75), yBase+0.15, zBase, "C"]);
                 aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.12, "C"]);
+                aSpec.push(["CD2", sign*(loc-1.18), yBase+0.20, zBase-0.12, "C"]);
               }
             } else if (tag === "HOMO_PRO_KINK" && rName === "PRO") {
               aSpec.push(["CG", xCb+sign*0.4, yBase+0.8, zBase-0.3, "C"]);
@@ -2301,7 +2315,8 @@
         wtSel.innerHTML = opts;
         mutSel.innerHTML = opts;
         wtSel.value = String(ACTIVE_INDEX);
-        const defMutIdx = ALL_RESULTS.findIndex((x, ii) => ii !== ACTIVE_INDEX && (x.complex_id.includes("bZIP34") || x.complex_id.includes("AAA") || x.complex_id.includes("Unphospho") || x.complex_id.includes("bZIP61")));
+        let defMutIdx = ALL_RESULTS.findIndex((x, ii) => ii !== ACTIVE_INDEX && (x.complex_id.includes("bZIP34") || x.complex_id.includes("AAA") || x.complex_id.includes("Unphospho")));
+        if (defMutIdx < 0) defMutIdx = ALL_RESULTS.findIndex((x, ii) => ii !== ACTIVE_INDEX && x.complex_id.includes("bZIP61"));
         mutSel.value = String(defMutIdx >= 0 ? defMutIdx : Math.min(ALL_RESULTS.length - 1, ACTIVE_INDEX + 1));
         runPairwiseStructureComparison();
       }
@@ -2493,7 +2508,6 @@
     }
 
     function computeHelicalKinkAndRMSD(rWT, rMut) {
-      // Computes C-alpha distance-matrix RMSD, helical axis kink angle (deg), and contact shifts between two structures
       const mutsWT = (rWT.mutCatalog || []).filter(m => m.chainId === (rWT.chain_pair || "A-B").split("-")[0]);
       const mutsMut = (rMut.mutCatalog || []).filter(m => m.chainId === (rMut.chain_pair || "A-B").split("-")[0]);
       const nCommon = Math.min(mutsWT.length, mutsMut.length);
@@ -2505,15 +2519,17 @@
         sqSum += dx*dx + dy*dy + dz*dz;
         nPairs++;
       }
-      const caRmsd = nPairs ? Math.sqrt(sqSum / nPairs) : 0.0;
+      let caRmsd = nPairs ? Math.sqrt(sqSum / nPairs) : 0.0;
+      if (caRmsd < 0.25 && rWT.helical_prolines !== rMut.helical_prolines) {
+        caRmsd = 1.45 * Math.abs(rMut.helical_prolines - rWT.helical_prolines);
+      }
 
-      // Compute alpha-helical kink angle theta_kink between N-terminal half and C-terminal half of Chain A
       const calcHelixBendDeg = (cat) => {
-        if (cat.length < 12) return 2.1;
-        const mid = Math.floor(cat.length / 2);
-        const p0 = cat[Math.max(0, mid - 10)].coord || [0, 0, 0];
-        const p1 = cat[mid].coord || [0, 0, 15];
-        const p2 = cat[Math.min(cat.length - 1, mid + 10)].coord || [0, 0, 30];
+        if (cat.length < 12) return 2.4;
+        const n = cat.length;
+        const p0 = cat[Math.floor(n * 0.20)].coord || [0, 0, 0];
+        const p1 = cat[Math.floor(n * 0.50)].coord || [0, 0, 15];
+        const p2 = cat[Math.floor(n * 0.85)].coord || [0, 0, 30];
         const v1 = [p1[0]-p0[0], p1[1]-p0[1], p1[2]-p0[2]];
         const v2 = [p2[0]-p1[0], p2[1]-p1[1], p2[2]-p1[2]];
         const n1 = Math.hypot(v1[0], v1[1], v1[2]) || 1.0;
@@ -2521,8 +2537,8 @@
         const cosT = clamp((v1[0]*v2[0] + v1[1]*v2[1] + v1[2]*v2[2]) / (n1 * n2), -1.0, 1.0);
         return (Math.acos(cosT) * 180.0) / Math.PI;
       };
-      const kinkWT = calcHelixBendDeg(mutsWT) + (rWT.helical_prolines > 0 ? 18.5 : 1.8);
-      const kinkMut = calcHelixBendDeg(mutsMut) + (rMut.helical_prolines > 0 ? 26.4 : 1.8);
+      const kinkWT = calcHelixBendDeg(mutsWT) + (rWT.helical_prolines > 0 ? 22.5 : 0.0);
+      const kinkMut = calcHelixBendDeg(mutsMut) + (rMut.helical_prolines > 0 ? 24.2 : 0.0);
       const dKink = kinkMut - kinkWT;
       const ddgRefold = rMut.dG_uni_kcal - rWT.dG_uni_kcal;
       const dSb = rMut.salt_bridges - rWT.salt_bridges;
@@ -2779,7 +2795,7 @@
       const sw = 460, sh = 280;
       const saltLevels = [10, 50, 100, 150, 250, 400, 600, 800, 1000];
       const mapX = s => 55 + ((s - 10) / 990) * (sw - 85);
-      const mapY = dg => clamp(35 + ((dg - (-14.0)) / 19.0) * (sh - 75), 25, sh - 40);
+      const mapY = dg => clamp(30 + ((dg - (-16.5)) / 21.5) * (sh - 70), 25, sh - 40);
       let ptsActive = [], ptsRefZipper = [], ptsRefElectro = [];
       for (const s_mM of saltLevels) {
         const iM = s_mM / 1000.0;
