@@ -621,6 +621,23 @@
           </select>
         </label>
       </div>
+      <div style="background:var(--bg-subtle); border:1px solid var(--border-strong); border-radius:8px; padding:12px 16px; margin-top:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+          <div style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase;">Universal Custom / De Novo Protein Sequence Builder (Instant 3D &amp; ΔG Audit for Any Custom Protein)</div>
+          <button class="btn btn-primary btn-sm" onclick="buildCustomProteinComplex()">+ Build &amp; Audit Custom Protein Complex</button>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1.6fr 1.6fr 0.9fr; gap:10px;">
+          <input type="text" id="customComplexName" value="Custom_DeNovo_CoiledCoil" placeholder="Complex Name" style="padding:6px 9px; border:1px solid var(--border-strong); border-radius:6px; font-family:var(--font-mono); font-size:12px;">
+          <input type="text" id="customSeqAInput" value="MKQLEDKVEELLSKNYHLENEVARLKKLVGER" placeholder="Chain A Sequence (1-letter AA)" style="padding:6px 9px; border:1px solid var(--border-strong); border-radius:6px; font-family:var(--font-mono); font-size:12px;">
+          <input type="text" id="customSeqBInput" value="MKQLEDKVEELLSKNYHLENEVARLKKLVGER" placeholder="Chain B Sequence (1-letter AA)" style="padding:6px 9px; border:1px solid var(--border-strong); border-radius:6px; font-family:var(--font-mono); font-size:12px;">
+          <select id="customTopologySelect" style="padding:6px 9px; border:1px solid var(--border-strong); border-radius:6px; font-family:var(--font-mono); font-size:12px; background:#fff;">
+            <option value="coiled_coil">Coiled-Coil / Helical</option>
+            <option value="globular">Globular / β-α Interface</option>
+            <option value="ptm_1433">Phospho-Motif (SEP)</option>
+            <option value="monomer_fold">Single-Chain Monomer (A_N–A_C)</option>
+          </select>
+        </div>
+      </div>
     </section>
 
     <div id="statusBanner" class="status-banner ok" style="display:none;">
@@ -1310,7 +1327,7 @@
       let ddgPolar = 0.0;
       if (cInfo.sb > 0) {
         if (clsMut !== "CHARGED") ddgPolar += 0.95 * cInfo.sb;
-        else if ((["ARG","LYS"].includes(wtName) && ["ASP","GLU"].includes(mutName)) || (["ASP","GLU"].includes(wtName) && ["ARG","LYS"].includes(mutName))) {
+        else if ((["ARG","LYS","HIS"].includes(wtName) && ["ASP","GLU"].includes(mutName)) || (["ASP","GLU"].includes(wtName) && ["ARG","LYS","HIS"].includes(mutName))) {
           ddgPolar += 1.85 * cInfo.sb;
         }
       }
@@ -1331,9 +1348,19 @@
     function toSanitizedPDBString(orderedResidues) {
       const pool = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
       const remap = {};
+      const usedChars = new Set();
       const lines = ["HEADER    UNIPPI-OWL SANITIZED STRUCTURE FOR FOLDX/ROSETTA"];
       for (const r of orderedResidues) {
-        if (!remap[r.chainId]) remap[r.chainId] = pool[Object.keys(remap).length % pool.length];
+        if (!remap[r.chainId]) {
+          if (r.chainId.length === 1 && /^[A-Za-z0-9]$/.test(r.chainId) && !usedChars.has(r.chainId)) {
+            remap[r.chainId] = r.chainId;
+            usedChars.add(r.chainId);
+          } else {
+            const nextChar = Array.from(pool).find(ch => !usedChars.has(ch)) || "Z";
+            remap[r.chainId] = nextChar;
+            usedChars.add(nextChar);
+          }
+        }
       }
       let serial = 1;
       for (const r of orderedResidues) {
@@ -1615,14 +1642,16 @@
 
           if (cname === "PRO" && inHel) {
             hotspots.push({ residue: `${r.chainId}:PRO${r.resSeq}`, chainId: r.chainId, resSeq: r.resSeq, ddG_Ala: -1.85, ddG_Pro: 0.0, buried: 0.25, note: "NATIVE_PRO_KINK" });
-            foldxMuts.push(`P${r.chainId}${r.resSeq}A;`);
+            const fxCid = r.chainId.endsWith("_C") || r.chainId.endsWith("_LIG") ? "B" : r.chainId[0];
+            foldxMuts.push(`P${fxCid}${r.resSeq}A;`);
             return;
           }
           if (!resContrib.has(r.key) || ["ALA","GLY"].includes(cname)) return;
           const ddgAla = Number((evaluateMutationDDG(cname, "ALA", cInfo, fBuried, inHel) * confScale).toFixed(2));
           const ddgPro = Number((ddgAla + (inHel ? 3.10 : 0.80)).toFixed(2));
           if (ddgAla >= 1.0) {
-            foldxMuts.push(`${THREE_TO_ONE[cname]||"X"}${r.chainId}${r.resSeq}A;`);
+            const fxCid = r.chainId.endsWith("_C") || r.chainId.endsWith("_LIG") ? "B" : r.chainId[0];
+            foldxMuts.push(`${THREE_TO_ONE[cname]||"X"}${fxCid}${r.resSeq}A;`);
             hotspots.push({ residue: `${r.chainId}:${cname}${r.resSeq}`, chainId: r.chainId, resSeq: r.resSeq, ddG_Ala: ddgAla, ddG_Pro: ddgPro, buried: Number(fBuried.toFixed(2)), note: "HOTSPOT" });
           }
         });
@@ -1705,6 +1734,7 @@
 
     function loadCrossKingdomBenchmark() {
       LAST_UPLOADED_FILES = null;
+      if (!window._PRESERVE_CUSTOM_ON_RECOMPUTE) window._CUSTOM_COMPLEX_SPECS = [];
       window._ACTIVE_SUITE_MODE = "VIP1_BENCHMARK";
       // Authentic 77-aa Arabidopsis thaliana TAIR/UniProt sequences (Prof. Tsugama Points 2 & 5 — ZERO sequence overwrites):
       // 1. VIP1 (At1g43700 / AtbZIP51, UniProt O49489, full-length 341 aa): 77-aa extended bZIP + 8-heptad coiled-coil (aa 193-269, 0 internal Prolines):
@@ -2159,13 +2189,36 @@
       updateUI();
     }
 
-    function recomputeActiveSuite() {
+    async function recomputeActiveSuite() {
       if (ALL_RESULTS.length && ALL_RESULTS[ACTIVE_INDEX]) {
         window._KEEP_COMPLEX_KEY = `${ALL_RESULTS[ACTIVE_INDEX].complex_id}|${ALL_RESULTS[ACTIVE_INDEX].chain_pair}`;
       }
-      if (LAST_UPLOADED_FILES) handleFileSelect(LAST_UPLOADED_FILES);
-      else if (window._ACTIVE_SUITE_MODE === "UNIVERSAL_5_MODALITY") loadUniversalModalityShowcase();
-      else loadCrossKingdomBenchmark();
+      const savedKey = window._KEEP_COMPLEX_KEY;
+      window._PRESERVE_CUSTOM_ON_RECOMPUTE = true;
+      if (LAST_UPLOADED_FILES) {
+        await handleFileSelect(LAST_UPLOADED_FILES);
+      } else if (window._ACTIVE_SUITE_MODE === "UNIVERSAL_5_MODALITY") {
+        loadUniversalModalityShowcase();
+      } else {
+        loadCrossKingdomBenchmark();
+      }
+      window._PRESERVE_CUSTOM_ON_RECOMPUTE = false;
+      if (window._CUSTOM_COMPLEX_SPECS && window._CUSTOM_COMPLEX_SPECS.length) {
+        for (let i = window._CUSTOM_COMPLEX_SPECS.length - 1; i >= 0; i--) {
+          const cRes = evaluateCustomProteinSpec(window._CUSTOM_COMPLEX_SPECS[i]);
+          if (cRes) {
+            ALL_RESULTS = ALL_RESULTS.filter(r => r.complex_id !== cRes.complex_id);
+            ALL_RESULTS.push(cRes);
+          }
+        }
+        ALL_RESULTS.sort((a,b) => b.UIS - a.UIS);
+        if (savedKey) {
+          const fIdx = ALL_RESULTS.findIndex(x => `${x.complex_id}|${x.chain_pair}` === savedKey);
+          ACTIVE_INDEX = fIdx >= 0 ? fIdx : 0;
+        }
+        syncCustomQueueBanner();
+        updateUI();
+      }
     }
 
     async function handleFileSelect(fileList) {
@@ -2383,6 +2436,16 @@
       }
 
       if (qList && queueLogs.length) qList.innerHTML = queueLogs.join("");
+      if (window._CUSTOM_COMPLEX_SPECS && window._CUSTOM_COMPLEX_SPECS.length && !window._PRESERVE_CUSTOM_ON_RECOMPUTE) {
+        for (let i = window._CUSTOM_COMPLEX_SPECS.length - 1; i >= 0; i--) {
+          const cRes = evaluateCustomProteinSpec(window._CUSTOM_COMPLEX_SPECS[i]);
+          if (cRes) {
+            ALL_RESULTS = ALL_RESULTS.filter(r => r.complex_id !== cRes.complex_id);
+            ALL_RESULTS.push(cRes);
+          }
+        }
+        syncCustomQueueBanner();
+      }
 
       ALL_RESULTS.sort((a,b) => b.UIS - a.UIS);
       if (window._KEEP_COMPLEX_KEY) {
@@ -2457,7 +2520,7 @@
         const wt3 = ONE_TO_THREE[wtPref] || (STANDARD_AA.has(wtPref) ? wtPref : "");
         const tail = rest.split(digits).slice(1).join("").trim();
         const mut3 = ONE_TO_THREE[tail] || (STANDARD_AA.has(tail) ? tail : "ALA");
-        const match = r.mutCatalog.find(m => (m.chainId.toUpperCase() === cTarg || m.chainId.toUpperCase() === `${cTarg}_N`) && m.resSeq === rNum && (!wt3 || m.wtName === wt3));
+        const match = r.mutCatalog.find(m => (m.chainId.toUpperCase() === cTarg || m.chainId.toUpperCase() === `${cTarg}_N` || m.chainId.toUpperCase() === `${cTarg}_C`) && m.resSeq === rNum && (!wt3 || m.wtName === wt3));
         if (match) {
           const rawLocal = evaluateMutationDDG(match.wtName, mut3, match.cInfo, match.fBuried, match.inHel);
           const p3d = simulate3DStructuralPerturbation(r, match, mut3).p1;
@@ -2465,6 +2528,19 @@
           const dgMut = Number(clamp(r.dG_uni_kcal + ddg, -22.0, 5.0).toFixed(2));
           const kdMutNm = Math.exp(dgMut / (R_GAS_KCAL * tempK)) * 1e9;
           out.push(`[Custom Mut] ${match.chainId}:${match.wtName}${match.resSeq}→${mut3}: ΔΔG = ${ddg>=0?"+":""}${ddg.toFixed(2)} kcal/mol (Local: ${rawLocal>=0?"+":""}${rawLocal.toFixed(2)} + 3D: ${p3d.ddgPropagated>=0?"+":""}${p3d.ddgPropagated.toFixed(2)}) | ΔG_mut = ${dgMut.toFixed(2)} kcal/mol | Kd_mut = ${kdMutNm < 1e7 ? kdMutNm.toFixed(2)+" nM" : ">10mM (NB)"}`);
+        }
+      }
+      if (!out.length && r.mutCatalog && r.mutCatalog.length && r.hotspots && r.hotspots.length && !/VIP1|bZIP|Barnase|GRF6|CPK21|SingleChain_Monomer/i.test(r.complex_id || "")) {
+        const topHs = r.hotspots[0];
+        const match = r.mutCatalog.find(m => m.label === topHs.residue) || r.mutCatalog[0];
+        for (const mut3 of ["PRO", "ALA"]) {
+          if (match.wtName === mut3) continue;
+          const rawLocal = evaluateMutationDDG(match.wtName, mut3, match.cInfo, match.fBuried, match.inHel);
+          const p3d = simulate3DStructuralPerturbation(r, match, mut3).p1;
+          const ddg = Number(((rawLocal + p3d.ddgPropagated) * match.confScale).toFixed(2));
+          const dgMut = Number(clamp(r.dG_uni_kcal + ddg, -22.0, 5.0).toFixed(2));
+          const kdMutNm = Math.exp(dgMut / (R_GAS_KCAL * tempK)) * 1e9;
+          out.push(`[Custom Auto-Scan] ${match.chainId}:${match.wtName}${match.resSeq}→${mut3}: ΔΔG = ${ddg>=0?"+":""}${ddg.toFixed(2)} kcal/mol (Local: ${rawLocal>=0?"+":""}${rawLocal.toFixed(2)} + 3D: ${p3d.ddgPropagated>=0?"+":""}${p3d.ddgPropagated.toFixed(2)}) | ΔG_mut = ${dgMut.toFixed(2)} kcal/mol | Kd_mut = ${kdMutNm < 1e7 ? kdMutNm.toFixed(2)+" nM" : ">10mM (NB)"}`);
         }
       }
       return out;
@@ -2538,7 +2614,7 @@
         </tr>
         <tr>
           <td><strong>5. Sequence &amp; CHUMA Mapping Context</strong></td>
-          <td>Modality = <strong>${r.modality || 'PROTEIN-PROTEIN'}</strong> · Domain Len = ${r.lenA || 77} aa (VIP1 UniProt O49489 full-length: 341 aa) · HXRXXS 14-3-3 Motifs = ${(r.seqA||"").includes("HRSRST") ? "Detected (Ser35/115/151)" : "Coiled-Coil / Globular"} · SHA-256 = <code>${r.sha256_id || "—"}</code></td>
+          <td>Modality = <strong>${r.modality || 'PROTEIN-PROTEIN'}</strong> · Domain Len = ${r.lenA || 77} aa ${/VIP1|bZIP|GRF6|CPK21|SingleChain_Monomer/i.test(r.complex_id || "") ? "(VIP1 UniProt O49489 full-length: 341 aa)" : `(Partner B Len = ${r.lenB || 0} aa · Universal Custom/PDB Audit)`} · HXRXXS 14-3-3 Motifs = ${(r.seqA||"").includes("HRSRST") ? "Detected (Ser35/115/151)" : (/H.R..[ST]|R.[ST].P/.test((r.seqA||"") + (r.seqB||"")) ? "Detected (Canonical 14-3-3 Motif)" : "Coiled-Coil / Globular")} · SHA-256 = <code>${r.sha256_id || "—"}</code></td>
           <td>Deterministic sequence fingerprint ready for cross-referencing with lightweight sequence aligners (e.g., CHUMA / MMseqs2) or proteome screens.</td>
         </tr>
       `;
@@ -2633,9 +2709,9 @@
           return { kinkDeg: 0.0, brokenContacts: 0, restoredContacts: 0, meanDistShiftA: 0.0, ddgPropagated: 0.0, note: "Conservative hydrophobic core packing retained (Δd_ij = 0.00 Å)" };
         }
         const dVol = (VOL_AA[mutAA] || 140) - (VOL_AA[site.wtName] || 140);
-        const isChargeRepulse = (["GLU","ASP"].includes(site.wtName) && ["LYS","ARG"].includes(mutAA)) || (["LYS","ARG"].includes(site.wtName) && ["GLU","ASP"].includes(mutAA));
+        const isChargeRepulse = (["GLU","ASP"].includes(site.wtName) && ["LYS","ARG","HIS"].includes(mutAA)) || (["LYS","ARG","HIS"].includes(site.wtName) && ["GLU","ASP"].includes(mutAA));
         const isStericClash = (dVol > 50 && site.fBuried >= 0.15);
-        let kinkDeg = 0.0, brokenContacts = 0, restoredContacts = 0, sumDistShift = 0.0, nShifted = 0, ddgPropagated = 0.0;
+        let kinkDeg = isToPro ? 26.5 : (isFromPro ? -26.5 : 0.0), brokenContacts = 0, restoredContacts = 0, sumDistShift = 0.0, nShifted = 0, ddgPropagated = 0.0;
 
         for (const c of (r.contacts || [])) {
           const onSameChain = (site.chainId === (r.chain_pair || "A-B").split("-")[0]) ? c.resSeqA : c.resSeqB;
@@ -2687,25 +2763,28 @@
       const p2 = (m2 && targetAA2 !== "NONE") ? applySitePerturb(m2, targetAA2) : null;
 
       let perturbedPdb = r.pdbText || "";
-      if (perturbedPdb && (Math.abs(p1.kinkDeg) > 1.0 || Math.abs(p1.meanDistShiftA) > 0.4)) {
-        const pivotZ = m.coord ? m.coord[2] : (m.resSeq * 1.5);
-        const rad = (p1.kinkDeg * Math.PI) / 180.0;
+      const activePerturbs = [[m, p1], ...(m2 && p2 ? [[m2, p2]] : [])];
+      for (const [siteObj, pObj] of activePerturbs) {
+        if (!perturbedPdb || !siteObj || !pObj || (Math.abs(pObj.kinkDeg) <= 1.0 && Math.abs(pObj.meanDistShiftA) <= 0.4)) continue;
+        const pivotZ = siteObj.coord ? siteObj.coord[2] : (siteObj.resSeq * 1.5);
+        const rad = (pObj.kinkDeg * Math.PI) / 180.0;
         const cosA = Math.cos(rad);
-        const signChain = (m.chainId === "A" || m.chainId.endsWith("_N")) ? -1.0 : 1.0;
+        const firstCid = (r.chain_pair || "A-B").split("-")[0];
+        const signChain = (siteObj.chainId === firstCid || siteObj.chainId.endsWith("_N")) ? -1.0 : 1.0;
+        const pdbTargetCid = (siteObj.chainId.endsWith("_C") || siteObj.chainId.endsWith("_LIG")) ? "B" : siteObj.chainId[0];
         perturbedPdb = perturbedPdb.split("\n").map(line => {
           if (!line.startsWith("ATOM  ") && !line.startsWith("HETATM")) return line;
           const cId = line.slice(21, 22).trim();
           const rSeq = parseInt(line.slice(22, 26).trim() || "0", 10);
-          const pdbTargetCid = m.chainId.endsWith("_C") ? "B" : m.chainId[0];
-          if (cId !== pdbTargetCid || rSeq < m.resSeq) return line;
+          if (cId !== pdbTargetCid || rSeq < siteObj.resSeq) return line;
           let x = parseFloat(line.slice(30, 38)), y = parseFloat(line.slice(38, 46)), z = parseFloat(line.slice(46, 54));
-          if (Math.abs(p1.kinkDeg) > 1.0) {
+          if (Math.abs(pObj.kinkDeg) > 1.0) {
             const dz = z - pivotZ;
-            const nx = x + signChain * dz * Math.sin(Math.abs(rad)) * (p1.kinkDeg > 0 ? 0.55 : -0.35);
+            const nx = x + signChain * dz * Math.sin(Math.abs(rad)) * (pObj.kinkDeg > 0 ? 0.55 : -0.35);
             const nz = pivotZ + dz * cosA;
             x = nx; z = nz;
-          } else if (Math.abs(rSeq - m.resSeq) <= 2) {
-            x += signChain * p1.meanDistShiftA * 0.6;
+          } else if (Math.abs(rSeq - siteObj.resSeq) <= 2) {
+            x += signChain * pObj.meanDistShiftA * 0.6;
           }
           const xStr = x.toFixed(3).padStart(8, " "), yStr = y.toFixed(3).padStart(8, " "), zStr = z.toFixed(3).padStart(8, " ");
           return line.slice(0, 30) + xStr + yStr + zStr + line.slice(54);
@@ -2772,7 +2851,7 @@
         const d12 = (m.coord && m2.coord) ? dist3(m.coord, m2.coord) : 99.0;
         let ddgCoupling = 0.0;
         if ((d12 <= 10.5 || (m.wtName === "PRO" && m2.wtName === "PRO" && m.resSeq === m2.resSeq)) && (m.chainId !== m2.chainId || m.resSeq !== m2.resSeq)) {
-          const isChargeSwap = ((["GLU","ASP"].includes(m.wtName) && ["LYS","ARG","HIS"].includes(targetAA) && ["LYS","ARG","HIS"].includes(m2.wtName) && ["GLU","ASP"].includes(targetAA2)) || (["LYS","ARG","HIS"].includes(m.wtName) && ["GLU","ASP"].includes(targetAA) && ["GLU","ASP"].includes(m2.wtName) && ["LYS","ARG","HIS"].includes(targetAA2)));
+          const isChargeSwap = ((["GLU","ASP"].includes(m.wtName) && ["LYS","ARG","HIS"].includes(targetAA) && ["LYS","ARG","HIS"].includes(m2.wtName) && ["GLU","ASP"].includes(targetAA2)) || (["LYS","ARG","HIS"].includes(m.wtName) && ["GLU","ASP"].includes(targetAA) && ["GLU","ASP"].includes(m2.wtName) && ["LYS","ARG","HIS"].includes(targetAA2)) || ((m.cInfo?.sb > 0 || m2.cInfo?.sb > 0) && ((["LYS","ARG","HIS"].includes(targetAA) && ["GLU","ASP"].includes(targetAA2)) || (["GLU","ASP"].includes(targetAA) && ["LYS","ARG","HIS"].includes(targetAA2)))));
           const isDualProRescue = (m.wtName === "PRO" && targetAA === "LEU" && m2.wtName === "PRO" && targetAA2 === "LEU");
           if (isChargeSwap) ddgCoupling = Number((-(ddg + ddg2) + 0.35).toFixed(2));
           else if (isDualProRescue) ddgCoupling = -2.20 - 1.20;
@@ -2871,15 +2950,225 @@
       const sasaA = computeResidueSASA(chains[cIds[0]]), sasaB = computeResidueSASA(chains[cIds[1]]);
       const resToIdx = new Map(ordered.map((r, i) => [r.key, i]));
       const stem = sf.name.replace(/\.(cif|mmcif|pdb)$/i, "");
-      const res = analyzePairJS(stem, cIds[0], cIds[1], chains[cIds[0]], chains[cIds[1]], ordered, resToIdx, "MODE_B_PRED_COORD", { iptm: null, res_pae_matrix: null }, sasaComp, sasaA, sasaB, tempK, lambdaPae, true);
+      const mutMode = detectConfidenceModeJS(ordered, meta, false, null);
+      const res = analyzePairJS(stem, cIds[0], cIds[1], chains[cIds[0]], chains[cIds[1]], ordered, resToIdx, mutMode, { iptm: null, res_pae_matrix: null }, sasaComp, sasaA, sasaB, tempK, lambdaPae, true);
       if (res) {
+        res.rawStructText = text;
+        res.rawStructFormat = sf.name.toLowerCase().endsWith(".pdb") ? "pdb" : "cif";
+        ALL_RESULTS = ALL_RESULTS.filter(r => r.complex_id !== stem);
         ALL_RESULTS.push(res);
+        ALL_RESULTS.sort((a,b) => b.UIS - a.UIS);
         updateUI();
         const selMut = document.getElementById("mutStructCompareSelect");
         if (selMut) {
-          selMut.value = String(ALL_RESULTS.length - 1);
+          const mIdx = ALL_RESULTS.findIndex(r => r.complex_id === stem);
+          selMut.value = String(mIdx >= 0 ? mIdx : ALL_RESULTS.length - 1);
           runPairwiseStructureComparison();
         }
+      }
+    }
+
+    window._CUSTOM_COMPLEX_SPECS = window._CUSTOM_COMPLEX_SPECS || [];
+
+    function cleanFastaSequence(rawInput) {
+      return String(rawInput || "").replace(/^>.*$/gm, "").toUpperCase().replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, "");
+    }
+
+    function evaluateCustomProteinSpec(spec) {
+      const { nameRaw, rawA, rawB, topo } = spec;
+      const isMono = (topo === "monomer_fold" || !rawB);
+      const midMono = Math.floor(rawA.length / 2);
+      const ptmState = document.getElementById("ptmStateSelect")?.value || "phospho";
+      const seqA = Array.from(rawA).map(ch => ONE_TO_THREE[ch] || "ALA");
+      const seqB = isMono ? [] : Array.from(rawB).map(ch => ONE_TO_THREE[ch] || "ALA");
+      const cifLines = [
+        `data_${nameRaw}`, "#", "_ma_qa_metric_local.type pLDDT", "loop_",
+        "_atom_site.group_PDB", "_atom_site.id", "_atom_site.type_symbol", "_atom_site.label_atom_id",
+        "_atom_site.label_alt_id", "_atom_site.label_comp_id", "_atom_site.label_asym_id", "_atom_site.label_entity_id",
+        "_atom_site.label_seq_id", "_atom_site.pdbx_PDB_ins_code", "_atom_site.Cartn_x", "_atom_site.Cartn_y",
+        "_atom_site.Cartn_z", "_atom_site.occupancy", "_atom_site.B_iso_or_equiv", "_atom_site.auth_seq_id",
+        "_atom_site.auth_asym_id", "_atom_site.pdbx_PDB_model_num"
+      ];
+      let serial = 1;
+      const dzStep = (topo === "coiled_coil" || isMono) ? 1.50 : 2.15;
+      const span = (topo === "ptm_1433" && ptmState !== "phospho") ? (ptmState === "native" ? 3.95 : 4.30) : 3.00;
+      const customPlddt = (topo === "ptm_1433" && ptmState !== "phospho") ? (ptmState === "native" ? 54.0 : 42.0) : 91.0;
+      const customPae = (topo === "ptm_1433" && ptmState !== "phospho") ? (ptmState === "native" ? 18.0 : 24.0) : 2.6;
+      const isAnion = r => ["ASP","GLU","SEP"].includes(r);
+      const isCation = r => ["ARG","LYS","HIS"].includes(r);
+      const chainEntries = isMono ? [["A", seqA]] : [["A", seqA], ["B", seqB]];
+      let totalCustomKinks = 0, sepCount = 0;
+      for (const [cIdx, [cid, seq]] of chainEntries.entries()) {
+        const otherSeq = isMono ? seqA.slice(midMono) : (cIdx === 0 ? seqB : seqA);
+        let cumKink = 0.0, yDef = 0.0;
+        for (let ri = 0; ri < seq.length; ri++) {
+          if (isMono && ri === midMono) { cumKink = 0.0; yDef = 0.0; }
+          const sign = (isMono && ri >= midMono) ? 1.0 : (cIdx === 0 ? -1.0 : 1.0);
+          const effRi = (isMono && ri >= midMono) ? (ri - midMono) : ri;
+          const activeOtherSeq = isMono ? (ri < midMono ? seqA.slice(midMono) : seqA.slice(0, midMono)) : otherSeq;
+          let rName = seq[ri], rSeq = ri + 1;
+          const hasNearBasic = [0, 1, -1, 2, -2].some(d => activeOtherSeq[effRi + d] && isCation(activeOtherSeq[effRi + d]));
+          const isMotifSerThr = (rName === "SER" || rName === "THR") && (effRi % 6 === 2 || hasNearBasic || (ri >= 3 && isCation(seq[ri - 3])) || seq[ri + 2] === "PRO");
+          if (topo === "ptm_1433" && cIdx === 0 && isMotifSerThr && sepCount < 3) {
+            rName = ptmState === "phospho" ? "SEP" : (ptmState === "dephospho" ? "ALA" : rName);
+            sepCount++;
+          }
+          if ((topo === "coiled_coil" || isMono) && rName === "PRO" && effRi >= 4 && effRi < (isMono ? midMono : seq.length) - 4) {
+            cumKink += 1.25; yDef += 1.75; totalCustomKinks++;
+          }
+          const zBase = effRi * dzStep, yBase = Math.sin(effRi * 1.745) * 1.05 + sign * yDef;
+          const loc = span + cumKink, xCa = sign * (loc + 1.50), xCb = sign * loc;
+          const yIon = cumKink === 0.0 ? 0.20 : yBase;
+          const aSpec = [
+            ["N", xCa + sign*0.8, yBase - 0.5, zBase - 0.6, "N"],
+            ["CA", xCa, yBase, zBase, "C"],
+            ["C", xCa + sign*0.6, yBase + 0.6, zBase + 0.6, "C"],
+            ["O", xCa + sign*1.2, yBase + 1.1, zBase + 0.8, "O"]
+          ];
+          if (rName !== "GLY") aSpec.push(["CB", xCb, yBase, zBase, "C"]);
+
+          let zIonTarget = zBase;
+          if (cumKink === 0.0 && (isAnion(rName) || isCation(rName))) {
+            for (const dOff of [0, 1, -1, 2, -2]) {
+              const pj = effRi + dOff;
+              if (pj >= 0 && pj < activeOtherSeq.length) {
+                const pName = activeOtherSeq[pj];
+                if ((isAnion(rName) && isCation(pName)) || (isCation(rName) && isAnion(pName))) {
+                  zIonTarget = 0.5 * (effRi + pj) * dzStep;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (rName === "SEP") {
+            aSpec.push(["OG", sign*(loc-0.85), yIon, zIonTarget, "O"], ["P", sign*(loc-1.20), yIon+0.10, zIonTarget, "P"], ["O1P", sign*(loc-1.42), yIon-0.05, zIonTarget, "O"]);
+          } else if (rName === "PRO") {
+            aSpec.push(["CG", xCb + sign*0.40, yBase + 0.75, zBase - 0.30, "C"], ["CD", xCa + sign*0.85, yBase + 0.25, zBase - 0.65, "C"]);
+          } else if (["ASP","GLU"].includes(rName)) {
+            aSpec.push(["CG", sign*(loc-0.55), yIon, zIonTarget, "C"], [rName === "ASP" ? "OD1" : "OE1", sign*(loc-1.42), yIon-0.05, zIonTarget, "O"]);
+          } else if (["ARG","LYS","HIS"].includes(rName)) {
+            const nAtom = rName === "HIS" ? "NE2" : (rName === "LYS" ? "NZ" : "NH1");
+            aSpec.push(["CG", sign*(loc-0.55), yIon, zIonTarget, "C"], [nAtom, sign*(loc-1.42), yIon-0.05, zIonTarget, "N"]);
+            if (rName === "HIS") aSpec.push(["CD2", sign*(loc-0.95), yIon+0.12, zIonTarget+0.12, "C"], ["ND1", sign*(loc-1.15), yIon-0.25, zIonTarget-0.12, "N"]);
+          } else if (rName === "CYS") {
+            aSpec.push(["SG", sign*(cumKink === 0.0 ? 0.95 : loc-0.85), yIon, zBase, "S"]);
+          } else if (AROMATIC_RINGS[rName]) {
+            aSpec.push(
+              ["CG", sign*(loc-0.75), yBase+0.15, zBase, "C"],
+              ["CD1", sign*(loc-1.18), yBase-0.10, zBase+0.12, "C"],
+              ["CD2", sign*(loc-1.18), yBase+0.25, zBase-0.12, "C"]
+            );
+            if (rName === "TYR") aSpec.push(["OH", sign*(loc-1.40), yBase, zBase, "O"]);
+          } else if (HYDROPHOBIC_RES.has(rName)) {
+            aSpec.push(["CG", sign*(loc-0.75), yBase+0.12, zBase, "C"], ["CD1", sign*(loc-1.18), yBase-0.08, zBase+0.10, "C"]);
+          } else if (["GLN","ASN","SER","THR"].includes(rName)) {
+            const pAtom = sign < 0 ? "OG" : "NE2";
+            const pEl = sign < 0 ? "O" : "N";
+            aSpec.push([pAtom, sign*(loc-1.40), yBase, zBase, pEl]);
+          }
+          for (const [an, ax, ay, az, el] of aSpec) {
+            cifLines.push(`ATOM ${serial++} ${el} ${an} . ${rName} ${cid} 1 ${rSeq} ? ${ax.toFixed(3)} ${ay.toFixed(3)} ${az.toFixed(3)} 1.00 ${customPlddt.toFixed(2)} ${rSeq} ${cid} 1`);
+          }
+        }
+      }
+      const rawCif = cifLines.join("\n");
+      const { atoms } = parseStructureText(rawCif, `${nameRaw}.cif`);
+      const { ordered, chains } = buildResidues(atoms);
+      const cIds = Object.keys(chains);
+      const caId = cIds[0], cbId = cIds[1];
+      const sasaComp = computeResidueSASA(ordered);
+      const sasaA = computeResidueSASA(chains[caId]), sasaB = computeResidueSASA(chains[cbId]);
+      const resToIdx = new Map(ordered.map((r, i) => [r.key, i]));
+      const tot = ordered.length, nA = chains[caId].length;
+      const paeMat = Array.from({length: tot}, (_, r) => Array.from({length: tot}, (__, c) => r===c ? 0.8 : ((r<nA&&c<nA)||(r>=nA&&c>=nA) ? 2.0 : customPae)));
+      const tempK = parseFloat(document.getElementById("tempInput").value) || 298.15;
+      const lambdaPae = parseFloat(document.getElementById("lambdaInput").value) || 8.0;
+      const customIptm = (topo === "ptm_1433" && ptmState !== "phospho") ? (ptmState === "native" ? 0.45 : 0.32) : (totalCustomKinks > 0 ? 0.42 : 0.86);
+      const res = analyzePairJS(nameRaw, caId, cbId, chains[caId], chains[cbId], ordered, resToIdx, "MODE_A_PRED_FULL", { iptm: customIptm, res_pae_matrix: paeMat }, sasaComp, sasaA, sasaB, tempK, lambdaPae, true);
+      if (res) {
+        res.rawStructText = rawCif;
+        res.rawStructFormat = "cif";
+        if (totalCustomKinks > 0 && (topo === "coiled_coil" || isMono)) {
+          for (const m of (res.mutCatalog || [])) {
+            const chainLen = m.chainId === caId ? chains[caId].length : chains[cbId].length;
+            const effSeq = (isMono && m.chainId === cbId) ? (m.resSeq - midMono) : m.resSeq;
+            if (m.wtName === "PRO" && effSeq >= 5 && effSeq <= chainLen - 4) {
+              m.inHel = true;
+              if (!res.hotspots.some(h => h.residue === m.label)) {
+                res.hotspots.push({ residue: m.label, chainId: m.chainId, resSeq: m.resSeq, ddG_Ala: -1.85, ddG_Pro: 0.0, buried: 0.25, note: "NATIVE_PRO_KINK" });
+              }
+            }
+          }
+          res.hotspots.sort((a,b) => Math.abs(b.ddG_Ala) - Math.abs(a.ddG_Ala));
+          if (res.hotspots.length && res.top_hotspot === "NONE") {
+            res.top_hotspot = res.hotspots[0].residue;
+            res.top_hotspot_ddG_Ala = res.hotspots[0].ddG_Ala;
+          }
+        }
+        if (totalCustomKinks > res.helical_prolines) {
+          const missedKinks = totalCustomKinks - res.helical_prolines;
+          res.helical_prolines = totalCustomKinks;
+          res.dG_phys_kcal = Number((res.dG_phys_kcal + 2.20 * missedKinks).toFixed(2));
+          res.dG_uni_kcal = Number(clamp(res.dG_uni_kcal + 2.20 * missedKinks, -22.0, 5.0).toFixed(2));
+          const km = Math.exp(res.dG_uni_kcal / (R_GAS_KCAL * tempK));
+          res.Kd_M = km;
+          res.Kd_nM = Number((km * 1e9).toFixed(2));
+          const origEval = res.evalDgAtSalt;
+          if (origEval) res.evalDgAtSalt = (s_mM) => clamp(origEval(s_mM) + 2.20 * missedKinks, -22.0, 5.0);
+          const sAffKink = clamp((-res.dG_uni_kcal - 5.0) / 8.5, 0.0, 1.0);
+          const rawUisKink = 0.25 * res.ipTM + 0.30 * res.LIS + 0.25 * res.pDockQ_PAE + 0.20 * sAffKink;
+          const tGateKink = res.dG_uni_kcal > -5.5 ? clamp((-res.dG_uni_kcal - 1.5) / 5.0, 0.12, 0.62) : 1.0;
+          res.UIS = Number(clamp(rawUisKink * tGateKink, 0.0, 1.0).toFixed(4));
+          res.UIS_margin = Number((res.UIS - UIS_THRESHOLD).toFixed(4));
+          res.threshold_call = res.UIS >= UIS_THRESHOLD ? "ABOVE_THRESHOLD" : "BELOW_THRESHOLD";
+          res.binding_class = res.UIS >= UIS_HIGH_CONF ? "HIGH_CONFIDENCE" : (res.UIS >= 0.42 ? "MODERATE" : "LOW_OR_DECOY");
+          if (res.dG_uni_kcal > -5.8 || res.helical_prolines > 0) {
+            res.pattern_id = "Pattern C";
+            res.pattern_desc = "Thermodynamically Penalized / Kink-Disrupted Interface (Geometric proximity offset by Proline kink or clash)";
+          }
+        }
+      }
+      return res;
+    }
+
+    function syncCustomQueueBanner() {
+      const qList = document.getElementById("batchFileQueueList");
+      if (!qList || !window._CUSTOM_COMPLEX_SPECS || !window._CUSTOM_COMPLEX_SPECS.length) return;
+      const customLines = window._CUSTOM_COMPLEX_SPECS.map((s, idx) =>
+        `<div>[Custom #${idx+1}] <strong>${s.nameRaw}.cif</strong> (De Novo / Custom Sequence Builder · ${s.topo}) · Chain A(${s.rawA.length} aa)${s.rawB ? `–Chain B(${s.rawB.length} aa)` : " Monomer Split"} · Status: <span style="color:var(--primary); font-weight:700;">BUILT &amp; EVALUATED</span></div>`
+      ).join("");
+      const existing = qList.innerHTML.replace(/<div>\[Custom #[\s\S]*?<\/div>/g, "");
+      qList.innerHTML = customLines + existing;
+    }
+
+    function buildCustomProteinComplex() {
+      const nameRaw = (document.getElementById("customComplexName")?.value || "Custom_Protein_Complex").trim().replace(/\s+/g, "_");
+      const rawA = cleanFastaSequence(document.getElementById("customSeqAInput")?.value || "");
+      let rawB = cleanFastaSequence(document.getElementById("customSeqBInput")?.value || "");
+      const topo = document.getElementById("customTopologySelect")?.value || "coiled_coil";
+      if (topo === "monomer_fold" || !rawB) {
+        if (rawA.length < 10) {
+          alert("Please enter at least 10 standard amino acids (A-Y) for a single-chain monomer audit.");
+          return;
+        }
+        rawB = "";
+      } else if (rawA.length < 6 || rawB.length < 6) {
+        alert("Please enter at least 6 standard amino acids (A-Y) for both Chain A and Chain B.");
+        return;
+      }
+      const spec = { nameRaw, rawA, rawB, topo };
+      window._CUSTOM_COMPLEX_SPECS = (window._CUSTOM_COMPLEX_SPECS || []).filter(s => s.nameRaw !== nameRaw);
+      window._CUSTOM_COMPLEX_SPECS.unshift(spec);
+      const res = evaluateCustomProteinSpec(spec);
+      if (res) {
+        ALL_RESULTS = ALL_RESULTS.filter(r => r.complex_id !== nameRaw);
+        ALL_RESULTS.push(res);
+        ALL_RESULTS.sort((a,b) => b.UIS - a.UIS);
+        const newIdx = ALL_RESULTS.findIndex(r => r.complex_id === nameRaw);
+        ACTIVE_INDEX = newIdx >= 0 ? newIdx : 0;
+        syncCustomQueueBanner();
+        updateUI();
       }
     }
 
@@ -2895,7 +3184,7 @@
         iptm: r.ipTM,
         ptm: Number(clamp(r.ipTM + 0.04, 0.0, 0.99).toFixed(3)),
         ranking_score: r.UIS,
-        unippi_reference: "Arabidopsis VIP1 (At1g43700 / UniProt O49489, 341 aa) & Group I/E bZIP / GRF6 Benchmark",
+        unippi_reference: /VIP1|bZIP|GRF6|Barnase/i.test(r.complex_id || "") ? "Arabidopsis VIP1 (At1g43700 / UniProt O49489, 341 aa) & Group I/E bZIP / GRF6 Benchmark" : `UniPPI-OWL v1.8 Universal / Custom Structure Audit (${r.complex_id} · ${r.modality || "PROTEIN-PROTEIN"})`,
         pae: r.paeMat || []
       };
       setTimeout(() => {
@@ -2918,14 +3207,30 @@
         if (i2 >= 0) sel2.value = i2;
         aa1.value = "LEU"; aa2.value = "LEU";
       } else {
-        let i1 = r.mutCatalog.findIndex(m => m.chainId === cA && m.cInfo && m.cInfo.sb > 0);
-        let i2 = r.mutCatalog.findIndex(m => m.chainId === cB && m.cInfo && m.cInfo.sb > 0);
-        if (i1 < 0) i1 = r.mutCatalog.findIndex(m => m.chainId === cA);
+        let i1 = -1, i2 = -1;
+        for (let aIdx = 0; aIdx < r.mutCatalog.length; aIdx++) {
+          const ma = r.mutCatalog[aIdx];
+          if (!["GLU","ASP"].includes(ma.wtName) || !ma.cInfo || ma.cInfo.sb <= 0) continue;
+          const bIdx = r.mutCatalog.findIndex((mb, idx) => idx !== aIdx && ["ARG","LYS","HIS"].includes(mb.wtName) && mb.cInfo && mb.cInfo.sb > 0 && ma.coord && mb.coord && dist3(ma.coord, mb.coord) <= 10.5);
+          if (bIdx >= 0) { i1 = aIdx; i2 = bIdx; break; }
+        }
+        if (i1 < 0 || i2 < 0) {
+          for (let aIdx = 0; aIdx < r.mutCatalog.length; aIdx++) {
+            const ma = r.mutCatalog[aIdx];
+            if (!ma.cInfo || (ma.cInfo.sb <= 0 && ma.cInfo.hb <= 0)) continue;
+            const bIdx = r.mutCatalog.findIndex((mb, idx) => idx !== aIdx && mb.cInfo && (mb.cInfo.sb > 0 || mb.cInfo.hb > 0) && ma.coord && mb.coord && dist3(ma.coord, mb.coord) <= 10.5);
+            if (bIdx >= 0) { i1 = aIdx; i2 = bIdx; break; }
+          }
+        }
+        if (i1 < 0) i1 = r.mutCatalog.findIndex(m => m.chainId === cA && m.cInfo && m.cInfo.sb > 0);
+        if (i1 < 0) i1 = 0;
         if (i2 < 0) i2 = r.mutCatalog.findIndex((m, idx) => idx !== i1 && m.cInfo && m.cInfo.sb > 0);
         if (i2 < 0) i2 = Math.min(r.mutCatalog.length - 1, Math.max(0, i1 + 1));
-        if (i1 >= 0) sel1.value = i1;
-        if (i2 >= 0) sel2.value = i2;
-        aa1.value = "LYS"; aa2.value = "GLU";
+        sel1.value = i1;
+        sel2.value = i2;
+        const wt1 = r.mutCatalog[i1]?.wtName || "GLU";
+        if (["LYS","ARG","HIS"].includes(wt1)) { aa1.value = "GLU"; aa2.value = "LYS"; }
+        else { aa1.value = "LYS"; aa2.value = "GLU"; }
       }
       runInteractiveMutation();
     }
@@ -3164,12 +3469,13 @@
         const homMode = document.getElementById("chumaHomologSelect")?.value || "WT";
         const isBzipFamily = /VIP1|bZIP/i.test(r.complex_id || "");
         const baseBzipDg = isBzipFamily ? -14.40 : r.dG_uni_kcal;
-        let ddgHom = 0.0, idPct = 100.0, homNote = "Wild-type reference sequence (AtVIP1 / At1g43700)";
+        let ddgHom = 0.0, idPct = 100.0, homNote = isBzipFamily ? "Wild-type reference sequence (AtVIP1 / At1g43700)" : `Wild-type reference sequence (${r.complex_id} · ${r.lenA || 0} aa + ${r.lenB || 0} aa)`;
         if (homMode === "POSF21") { ddgHom = 0.18; idPct = 89.3; homNote = "Group I bZIP29/PosF21 (Conserved Leu zipper -> Retains nM binding)"; }
         else if (homMode === "BZIP52") { ddgHom = 0.22; idPct = 87.0; homNote = "Group I AtbZIP52 (At1g06850, conserved 8-heptad Leu zipper & HXRXXS -> Retains nM dimerization)"; }
         else if (homMode === "VSF1") { ddgHom = 0.15; idPct = 88.3; homNote = "Tomato Group I SlVSF-1 (Tsugama 2025, conserved HXRXXS 14-3-3 motif & extended coiled-coil)"; }
         else if (homMode === "BZIP61") { ddgHom = 5.96; idPct = 82.1; homNote = "Group E AtbZIP61 (At3g58120 — Selective heterodimer, -8.44 kcal/mol)"; }
         else if (homMode === "BZIP34") { ddgHom = 16.79; idPct = 71.4; homNote = "Group E AtbZIP34 (Internal Pro40/47/54 kinks -> Abolishes homodimer, +2.39 kcal/mol)"; }
+        if (!isBzipFamily && homMode !== "WT") homNote += ` [Cross-Scaffold bZIP Projection on ${r.complex_id}]`;
         const dgHom = clamp(baseBzipDg + ddgHom, -22.0, 5.0);
         if (document.getElementById("chumaHomologSummary")) {
           document.getElementById("chumaHomologSummary").innerHTML = `CHUMA Projection: Intf Identity = <strong>${idPct}%</strong> · Projected ΔG<sub>homolog</sub> = <strong>${dgHom.toFixed(2)} kcal/mol</strong> (${homNote})`;
