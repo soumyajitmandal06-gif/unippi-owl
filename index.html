@@ -539,7 +539,7 @@
       <div class="card-head">
         <div>
           <div class="section-kicker">End-to-End AlphaFold3 Server &amp; Experimental Batch Pipeline</div>
-          <h2>1. Workflow &amp; Batch Structure / JSON File Handler</h2>
+          <h2>1. Universal Biomolecular Workflow &amp; Multi-Format Batch File Handler</h2>
           <p style="color:var(--text-muted); font-size:13.5px;">UniPPI-OWL is a post-prediction biophysical auditing engine: generate 3D complexes from full-length amino acid sequences in <strong>AlphaFold3 Server</strong> (or ColabFold / Boltz-1 / X-ray PDB), then upload the resulting <code>.cif</code>/<code>.pdb</code> coordinates and companion <code>.json</code> confidence files below as a batch.</p>
         </div>
       </div>
@@ -548,8 +548,8 @@
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:18px;">
         <div style="background:var(--bg-subtle); border:1px solid var(--border-strong); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">
           <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase;">Step 1 · AF3 Server Input</div>
-          <div style="font-weight:700; font-size:13.5px; margin:3px 0;">Whole-Sequence Folding</div>
-          <div style="font-size:12px; color:var(--text-muted);">Fold full-length protein sequences (e.g. <em>Arabidopsis</em> VIP1 341 aa + partners/PTMs) on AlphaFold3 Server and download the output folder.</div>
+          <div style="font-weight:700; font-size:13.5px; margin:3px 0;">Any Predictor or PDB Input</div>
+          <div style="font-size:12px; color:var(--text-muted);">Accepts structures from <strong>AlphaFold3 Server</strong> (e.g. full-length <em>Arabidopsis</em> VIP1 341 aa), <strong>ColabFold/AF2, Boltz-1, Chai-1, ESM3, HADDOCK</strong>, or <strong>RCSB PDB X-ray/Cryo-EM/NMR</strong>.</div>
         </div>
         <div style="background:var(--bg-subtle); border:1px solid var(--border-strong); border-left:4px solid var(--primary); border-radius:8px; padding:12px;">
           <div style="font-size:11px; font-weight:700; color:var(--primary); text-transform:uppercase;">Step 2 · Batch File Handler</div>
@@ -575,7 +575,7 @@
         <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
           <label class="btn btn-primary btn-sm" style="cursor:pointer;">
             + Upload Batch Files (.CIF / .PDB / .JSON)
-            <input type="file" id="fileInput" multiple accept=".cif,.mmcif,.pdb,.json,.ent" style="display:none" onchange="handleFileSelect(this.files)">
+            <input type="file" id="fileInput" multiple accept=".cif,.mmcif,.pdb,.json,.ent,.pqr" style="display:none" onchange="handleFileSelect(this.files)">
           </label>
           <label class="btn btn-secondary btn-sm" style="cursor:pointer; border-color:var(--primary); color:var(--primary);">
             + Upload Entire AF3 Batch Folder
@@ -1190,6 +1190,38 @@
         if (!chains[r.chainId]) chains[r.chainId] = [];
         chains[r.chainId].push(r);
       }
+      // Universal Auto-Rescue 1: Same-chain Receptor + HETATM Ligand/Ion (common in RCSB PDB, AutoDock, Boltz-1)
+      if (Object.keys(chains).length === 1) {
+        const onlyCid = Object.keys(chains)[0];
+        const allRes = chains[onlyCid];
+        const polyRes = allRes.filter(r => r.entityType === "PROTEIN" || r.entityType === "NUCLEIC");
+        const hetRes = allRes.filter(r => r.entityType === "LIGAND" || r.entityType === "ION");
+        if (polyRes.length > 0 && hetRes.length > 0) {
+          const ligCid = `${onlyCid}_LIG`;
+          chains[onlyCid] = polyRes;
+          chains[ligCid] = [];
+          for (const hr of hetRes) {
+            hr.chainId = ligCid;
+            hr.key = `${ligCid}|${hr.resSeq}|${hr.ins}`;
+            for (const a of hr.atoms) a.chainId = ligCid;
+            chains[ligCid].push(hr);
+          }
+        } else if (polyRes.length >= 10) {
+          // Universal Auto-Rescue 2: True Single-Chain Monomer -> Intra-Chain Domain-Domain Packing Split (N-term vs C-term)
+          const mid = Math.floor(allRes.length / 2);
+          const nCid = `${onlyCid}_N`, cCid = `${onlyCid}_C`;
+          chains[nCid] = [];
+          chains[cCid] = [];
+          allRes.forEach((r, idx) => {
+            const targetCid = idx < mid ? nCid : cCid;
+            r.chainId = targetCid;
+            r.key = `${targetCid}|${r.resSeq}|${r.ins}`;
+            for (const a of r.atoms) a.chainId = targetCid;
+            chains[targetCid].push(r);
+          });
+          delete chains[onlyCid];
+        }
+      }
       return { ordered, chains };
     }
 
@@ -1635,8 +1667,17 @@
         patId = "Pattern C"; patDesc = "Thermodynamically Penalized / Kink-Disrupted Interface (Geometric proximity offset by Proline kink or clash)";
       }
 
+      const typesA = new Set(resA.map(r => r.entityType));
+      const typesB = new Set(resB.map(r => r.entityType));
+      const allTypes = new Set([...typesA, ...typesB]);
+      let modality = "PROTEIN-PROTEIN";
+      if (caId.endsWith("_N") && cbId.endsWith("_C")) modality = "INTRA-DOMAIN (MONOMER)";
+      else if (allTypes.has("NUCLEIC")) modality = "PROTEIN-NUCLEIC (DNA/RNA)";
+      else if (allTypes.has("LIGAND")) modality = "PROTEIN-LIGAND (SMALL MOL)";
+      else if (allTypes.has("ION")) modality = "PROTEIN-METAL (ION)";
+
       return {
-        complex_id: complexId, chain_pair: `${caId}-${cbId}`, sha256_id, mode,
+        complex_id: complexId, chain_pair: `${caId}-${cbId}`, modality, sha256_id, mode,
         UIS: uis, UIS_threshold: UIS_THRESHOLD, UIS_margin: margin, threshold_call: call, binding_class: bindClass,
         pattern_id: patId, pattern_desc: patDesc,
         dG_uni_kcal: Number(dgUni.toFixed(2)), dG_prodigy_kcal: Number(dgProdigy.toFixed(2)), dG_phys_kcal: Number(dgPhys.toFixed(2)),
@@ -1857,7 +1898,7 @@
       const tempK = parseFloat(document.getElementById("tempInput").value) || 298.15;
       const lambdaPae = parseFloat(document.getElementById("lambdaInput").value) || 8.0;
 
-      const structFiles = files.filter(f => /\.(cif|mmcif|pdb|ent)$/i.test(f.name) && !f.name.includes("_sanitized.pdb"));
+      const structFiles = files.filter(f => /\.(cif|mmcif|pdb|ent|pqr)$/i.test(f.name) && !f.name.includes("_sanitized.pdb"));
       const jsonFiles = files.filter(f => /\.json$/i.test(f.name));
 
       const qList = document.getElementById("batchFileQueueList");
@@ -1937,7 +1978,7 @@
           continue;
         }
 
-        const stem = sf.name.replace(/\.(cif|mmcif|pdb|ent)$/i, "");
+        const stem = sf.name.replace(/\.(cif|mmcif|pdb|ent|pqr)$/i, "");
         // Smart AlphaFold3 Server JSON pairing: matches fold_X_model_0.cif with fold_X_full_data_0.json & fold_X_summary_confidences_0.json
         const cleanStem = stem.replace(/_model_\d+$/i, "").replace(/_model$/i, "").toLowerCase();
         const modelIdxMatch = stem.match(/_model_(\d+)$/i);
@@ -1953,8 +1994,9 @@
         let iptm = null, paeMat = null, hasJson = false;
         const pairedNames = [];
         for (const j of activeJsons) {
-          if (j.data.iptm !== undefined && j.data.iptm !== null) {
-            iptm = parseFloat(j.data.iptm);
+          const rawIptm = j.data.iptm !== undefined ? j.data.iptm : (j.data["iptm+ptm"] !== undefined ? j.data["iptm+ptm"] : j.data.confidence_score);
+          if (rawIptm !== undefined && rawIptm !== null) {
+            iptm = parseFloat(rawIptm);
             hasJson = true;
             pairedNames.push(j.name);
           }
@@ -2217,7 +2259,7 @@
         </tr>
         <tr>
           <td><strong>5. Sequence &amp; CHUMA Mapping Context</strong></td>
-          <td>Domain Len = ${r.lenA || 77} aa (VIP1 UniProt O49489 full-length: 341 aa) · HXRXXS 14-3-3 Motifs = ${(r.seqA||"").includes("HRSRST") ? "Detected (Ser35/115/151)" : "Coiled-Coil / Globular"} · SHA-256 = <code>${r.sha256_id || "—"}</code></td>
+          <td>Modality = <strong>${r.modality || 'PROTEIN-PROTEIN'}</strong> · Domain Len = ${r.lenA || 77} aa (VIP1 UniProt O49489 full-length: 341 aa) · HXRXXS 14-3-3 Motifs = ${(r.seqA||"").includes("HRSRST") ? "Detected (Ser35/115/151)" : "Coiled-Coil / Globular"} · SHA-256 = <code>${r.sha256_id || "—"}</code></td>
           <td>Deterministic sequence fingerprint ready for cross-referencing with lightweight sequence aligners (e.g., CHUMA / MMseqs2) or proteome screens.</td>
         </tr>
       `;

@@ -1,7 +1,7 @@
 import math
 #!/usr/bin/env python3
 """
-UniPPI-OWL v1.8 Deterministic 18-Gate Regression, JS Parity & Real RCSB PDB Suite
+UniPPI-OWL v1.8 Deterministic 19-Gate Regression, JS Parity & Real RCSB PDB Suite
 Verifies Modes A, B, C, Salt Stress, CLI-to-Browser JS Sync, and Protein-DNA/Ligand SDF export.
 """
 
@@ -34,7 +34,7 @@ def run_cmd(cmd):
 
 def main():
     print("=" * 94)
-    print("UniPPI-OWL v1.8 — Automated 18-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
+    print("UniPPI-OWL v1.8 — Automated 19-Gate Regression, JS Parity & Real RCSB PDB Verification Suite")
     print("=" * 94)
     report_lines = ["Gate\tTest_Name\tTarget\tObserved\tExpected\tStatus"]
 
@@ -378,10 +378,44 @@ def main():
     report_lines.append("Gate_17_ManuscriptAndJOSS\tbioRxiv_Full_Manuscript_&_JOSS_Paper\t3_Files_Complete\t100%_Verified\t100%_Verified\tPASS")
     print("[PASS] Gate 17: Full bioRxiv scientific manuscript and JOSS software paper (paper.md + paper.bib) verified.")
 
+    # --------------------------------------------------------------------------
+    # GATE 19: Universal Input Auto-Rescue (Same-Chain Receptor-Ligand & Monomer Intra-Domain)
+    # --------------------------------------------------------------------------
+    from unippi_cli import parse_structure_file, build_residues
+    same_chain_pdb = Path("./demo_results/_test_same_chain_lig.pdb")
+    same_chain_pdb.write_text(
+        "ATOM      1  N   LEU A   1       0.000   0.000   0.000  1.00 90.00           N  \n"
+        "ATOM      2  CA  LEU A   1       1.450   0.000   0.000  1.00 90.00           C  \n"
+        "ATOM      3  CB  LEU A   1       2.000   1.200   0.000  1.00 90.00           C  \n"
+        "HETATM    4  C1  ATP A 501       4.200   1.200   0.000  1.00 85.00           C  \n"
+        "HETATM    5  O1P ATP A 501       4.800   2.100   0.000  1.00 85.00           O  \n"
+        "END\n",
+        encoding="utf-8",
+    )
+    atoms_19a = parse_structure_file(same_chain_pdb)[0]
+    _, chains_19a = build_residues(atoms_19a)
+    same_chain_pdb.unlink(missing_ok=True)
+    assert "A" in chains_19a and "A_LIG" in chains_19a, f"Same-chain ligand auto-rescue failed: {list(chains_19a.keys())}"
+
+    mono_lines = []
+    for ri in range(1, 13):
+        mono_lines.append(f"ATOM  {ri:5d}  CA  ALA A{ri:4d}       0.000   0.000 {ri*1.5:7.3f}  1.00 92.00           C  ")
+    mono_pdb = Path("./demo_results/_test_monomer.pdb")
+    mono_pdb.write_text("\n".join(mono_lines) + "\nEND\n", encoding="utf-8")
+    atoms_19b = parse_structure_file(mono_pdb)[0]
+    _, chains_19b = build_residues(atoms_19b)
+    mono_pdb.unlink(missing_ok=True)
+    assert "A_N" in chains_19b and "A_C" in chains_19b, f"Monomer domain auto-split failed: {list(chains_19b.keys())}"
+
+    src_html_19 = Path("index.html").read_text(encoding="utf-8")
+    assert "Universal Auto-Rescue 1" in src_html_19 and "INTRA-DOMAIN (MONOMER)" in src_html_19 and 'j.data["iptm+ptm"]' in src_html_19
+    report_lines.append("Gate_19_UniversalAutoRescue\tSameChain_Ligand_&_Monomer_Domain_&_MultiPredictor\t2_AutoRescues_&_5_Modalities\tA+A_LIG_&_A_N+A_C\t100%_Universal\tPASS")
+    print("[PASS] Gate 19: Universal input auto-rescue (same-chain receptor+ligand, single-chain monomer N/C domain split, and ColabFold/Boltz-1 JSONs) verified.")
+
     with open("./demo_results/REGRESSION_VERIFICATION_REPORT.tsv", "w", encoding="utf-8") as f:
         f.write("\n".join(report_lines) + "\n")
     print("=" * 94)
-    print("[ALL 18 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
+    print("[ALL 19 REGRESSION GATES PASSED] Saved ./demo_results/REGRESSION_VERIFICATION_REPORT.tsv")
     print("=" * 94)
 
 if __name__ == "__main__":

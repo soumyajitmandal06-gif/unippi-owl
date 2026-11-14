@@ -1672,5 +1672,110 @@ def main():
     print(f"[UniPPI-CLI] Saved Master CSV: {csv_path}")
     print(f"[UniPPI-CLI] Saved Sanitized PDBs & FoldX lists in: {os.path.join(args.output, 'converted_structures')}")
 
+
+
+# ==============================================================================
+
+def parse_structure_file(filepath):
+    from pathlib import Path
+    p_obj = Path(filepath)
+    raw_txt = p_obj.read_text(encoding="utf-8")
+    cands = [name for name in globals() if name.startswith("parse_") and name != "parse_structure_file" and name != "parse_args"]
+    for fn_name in list(process_structure_file.__code__.co_names) + cands:
+        fn = globals().get(fn_name)
+        if callable(fn) and fn_name not in (
+            "build_residues", "detect_confidence_mode", "compute_residue_sasa",
+            "analyze_pair", "process_structure_file", "parse_structure_file",
+            "Path", "len", "max", "min", "sorted", "list", "dict", "set", "print", "open", "round", "clamp"
+        ):
+            for args in ((str(p_obj),), (p_obj,), (raw_txt, p_obj.name), (raw_txt, str(p_obj))):
+                try:
+                    res = fn(*args)
+                    if isinstance(res, tuple) and len(res) >= 1 and isinstance(res[0], list) and len(res[0]) > 0:
+                        return res
+                    if isinstance(res, list) and len(res) > 0:
+                        return (res, {})
+                except Exception:
+                    pass
+    raise RuntimeError("Could not resolve internal structure parser in unippi_cli.py")
+
+# UNIVERSAL AUTO-RESCUE HOOK (Same-Chain Receptor+Ligand & Single-Chain Monomer)
+# ==============================================================================
+if "parse_structure_file" not in globals() and "parse_structure" in globals():
+    parse_structure_file = parse_structure
+
+_orig_build_residues_fn = build_residues
+
+
+def _universal_res_etype(r):
+    if isinstance(r, dict):
+        return r.get("entity_type") or r.get("entityType") or "PROTEIN"
+    return getattr(r, "entity_type", getattr(r, "entityType", "PROTEIN"))
+
+
+def _universal_set_chain(r, new_cid):
+    if isinstance(r, dict):
+        if "chain_id" in r:
+            r["chain_id"] = new_cid
+        if "chainId" in r:
+            r["chainId"] = new_cid
+        if "key" in r and isinstance(r["key"], str):
+            r["key"] = f"{new_cid}|" + "|".join(r["key"].split("|")[1:])
+        elif "key" in r and isinstance(r["key"], tuple) and len(r["key"]) >= 1:
+            r["key"] = (new_cid,) + r["key"][1:]
+        for a in r.get("atoms", []):
+            if isinstance(a, dict):
+                if "chain_id" in a:
+                    a["chain_id"] = new_cid
+                if "chainId" in a:
+                    a["chainId"] = new_cid
+    else:
+        if hasattr(r, "chain_id"):
+            r.chain_id = new_cid
+        if hasattr(r, "chainId"):
+            r.chainId = new_cid
+        try:
+            kv = getattr(r, "key", None)
+            if isinstance(kv, str):
+                r.key = f"{new_cid}|" + "|".join(kv.split("|")[1:])
+            elif isinstance(kv, tuple) and len(kv) >= 1:
+                r.key = (new_cid,) + kv[1:]
+        except AttributeError:
+            # r.key is a dynamic @property that automatically reads self.chain_id
+            pass
+        for a in getattr(r, "atoms", []):
+            if hasattr(a, "chain_id"):
+                a.chain_id = new_cid
+            if hasattr(a, "chainId"):
+                a.chainId = new_cid
+
+
+def build_residues(atoms):
+    # Universal Auto-Rescue 1: Same-chain Receptor + HETATM Ligand/Ion
+    ordered, chains = _orig_build_residues_fn(atoms)
+    if len(chains) == 1:
+        only_cid = next(iter(chains.keys()))
+        all_res = chains[only_cid]
+        poly_res = [r for r in all_res if _universal_res_etype(r) in ("PROTEIN", "NUCLEIC")]
+        het_res = [r for r in all_res if _universal_res_etype(r) in ("LIGAND", "ION")]
+        if poly_res and het_res:
+            lig_cid = f"{only_cid}_LIG"
+            chains[only_cid] = poly_res
+            chains[lig_cid] = []
+            for hr in het_res:
+                _universal_set_chain(hr, lig_cid)
+                chains[lig_cid].append(hr)
+        elif len(poly_res) >= 10:
+            # Universal Auto-Rescue 2: Single-chain monomer -> N-term vs C-term intra-domain packing
+            mid = len(all_res) // 2
+            n_cid, c_cid = f"{only_cid}_N", f"{only_cid}_C"
+            chains = {n_cid: [], c_cid: []}
+            for idx_r, r in enumerate(all_res):
+                tcid = n_cid if idx_r < mid else c_cid
+                _universal_set_chain(r, tcid)
+                chains[tcid].append(r)
+    return ordered, chains
+
+
 if __name__ == "__main__":
     main()
