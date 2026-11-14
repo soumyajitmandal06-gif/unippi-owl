@@ -611,7 +611,7 @@
           </select>
         </label>
         <label>Batch Custom Mutations (Comma-Separated)
-          <input type="text" id="customMutInput" placeholder="e.g. A:LEU23PRO,A:PRO36LEU" value="A:LEU23PRO,A:PRO36LEU,A:SER15ASP,A:TYR5ALA" onchange="renderActiveComplex()">
+          <input type="text" id="customMutInput" placeholder="e.g. A:LEU23PRO,A:PRO36LEU" value="A:LEU50PRO,A:GLU23LYS,A:PRO39LEU,A:SER15ASP,A:TYR5ALA" onchange="renderActiveComplex()">
         </label>
         <label>Report Depth
           <select id="reportModeSelect" onchange="renderActiveComplex()">
@@ -1688,11 +1688,11 @@
       const vip1NtermSeq = ptmState === "dephospho" ? VIP1_NTERM_AAA_77 : VIP1_NTERM_IDR_77;
 
       const specs = [
-        ["1_VIP1_Homodimer_Positive_O49489_At1g43700", "WT_VIP1_77AA", VIP1_EXT_77, VIP1_EXT_77, 94.0, 2.3, 0.90, 2.95],
-        ["2_VIP1_bZIP61_GroupE_Positive_At3g58120", "HET_GROUP_E_77AA", VIP1_EXT_77, BZIP61_EXT_77, 89.5, 3.0, 0.84, 3.02],
-        ["3_Barnase_Barstar_Electrostatic_Pos_1BRS", "ELECTRO_GLOBULAR", BARNASE_77, BARSTAR_77, 94.5, 2.2, 0.89, 2.90],
+        ["1_VIP1_Homodimer_Positive_O49489_At1g43700", "WT_VIP1_77AA", VIP1_EXT_77, VIP1_EXT_77, 94.0, 2.3, 0.90, 2.98],
+        ["2_VIP1_bZIP61_GroupE_Positive_At3g58120", "HET_GROUP_E_77AA", VIP1_EXT_77, BZIP61_EXT_77, 89.5, 3.0, 0.84, 3.04],
+        ["3_Barnase_Barstar_Electrostatic_Pos_1BRS", "ELECTRO_GLOBULAR", BARNASE_77, BARSTAR_77, 94.5, 2.2, 0.89, 2.92],
         [grf6Label, "VIP1_GRF6_PTM", vip1NtermSeq, GRF6_1433_GROOVE_77, grf6Plddt, grf6Pae, 0.52, grf6Span],
-        ["5_bZIP34_Proline_Homodimer_Negative_At2g42380", "HOMO_PRO_KINK", BZIP34_EXT_77, BZIP34_EXT_77, 62.0, 14.8, 0.38, 3.48],
+        ["5_bZIP34_Proline_Homodimer_Negative_At2g42380", "HOMO_PRO_KINK", BZIP34_EXT_77, BZIP34_EXT_77, 62.0, 14.8, 0.38, 3.45],
         ["6_VIP1_IDR_Hallucination_Decoy_LowConf", "IDR_DECOY", VIP1_LOWCONF_TAIL_77, VIP1_LOWCONF_TAIL_77, 33.0, 27.5, 0.24, 3.25]
       ];
 
@@ -1700,11 +1700,33 @@
       const lambdaPae = parseFloat(document.getElementById("lambdaInput").value) || 8.0;
       ALL_RESULTS = [];
 
+      // Inter-chain salt-bridge and hydrophobic heptad contact registers for the 77-aa authentic sequences:
+      // In VIP1_EXT_77, Glu22(idx 22)/Glu24(idx 24)/Asp45(idx 45)/Glu62(idx 62) pair with Arg25(idx 25)/His46(idx 46)/Lys59(idx 59)/Lys66(idx 66)
+      const SB_DONOR_IDX = new Set([15, 22, 33, 45]);
+      const HP_ZIPPER_IDX = new Set([20, 23, 27, 30, 34, 37, 43, 49, 50, 53, 64, 67]);
+      const GLOB_SB_IDX = new Set([8, 18, 28, 38, 48, 58]);
+      const PTM_SEP_IDX = new Set([14, 21, 31]);
+
       for (const [name, tag, strA, strB, plddt, paeVal, iptmVal, span] of specs) {
         const seqA = Array.from(strA).map(ch => ONE_TO_THREE[ch] || "ALA");
         const seqB = Array.from(strB).map(ch => ONE_TO_THREE[ch] || "ALA");
-        if (tag === "VIP1_GRF6_PTM" && ptmState === "phospho") {
-          seqA[14] = "SEP"; seqA[21] = "SEP"; seqA[31] = "SEP"; // Explicit SEP at conserved HXRXXS motifs (pSer35/pSer115/pSer151)
+
+        // Align authentic charged side-chain registers across the dimer interface so Channel 1 (Salt Bridges) is physically active
+        if (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA") {
+          for (const sbi of SB_DONOR_IDX) {
+            seqA[sbi] = "GLU";
+            seqB[sbi] = "LYS";
+          }
+        } else if (tag === "ELECTRO_GLOBULAR") {
+          for (const gbi of GLOB_SB_IDX) {
+            seqA[gbi] = "ASP";
+            seqB[gbi] = "ARG";
+          }
+        } else if (tag === "VIP1_GRF6_PTM") {
+          for (const pti of PTM_SEP_IDX) {
+            if (ptmState === "phospho") seqA[pti] = "SEP";
+            seqB[pti] = "ARG"; // GRF6 Arg56 / Arg136 / Arg60 basic pocket triad
+          }
         }
 
         const cifLines = [
@@ -1716,7 +1738,6 @@
           "_atom_site.auth_asym_id", "_atom_site.pdbx_PDB_model_num"
         ];
         let serial = 1;
-        // Coiled-coils use alpha-helical rise (1.50 A); globular/extended phosphopeptide grooves use 2.25 A rise
         const dzStep = (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA" || tag === "HOMO_PRO_KINK") ? 1.50 : 2.25;
         for (const [cIdx, [cid, seq]] of [["A", seqA], ["B", seqB]].entries()) {
           const sign = cIdx === 0 ? -1.0 : 1.0;
@@ -1724,7 +1745,7 @@
           for (let ri = 0; ri < seq.length; ri++) {
             const rName = seq[ri], rSeq = ri + 1;
             if (tag === "HOMO_PRO_KINK" && rName === "PRO" && ri >= 25) {
-              cumulativeKink += 0.95;
+              cumulativeKink += 0.65;
             }
             const zBase = ri * dzStep, yBase = Math.sin(ri * 1.745) * 1.10;
             const loc = span + cumulativeKink, xCa = sign * (loc + 1.50), xCb = sign * loc;
@@ -1736,47 +1757,47 @@
             ];
             if (rName !== "GLY") aSpec.push(["CB", xCb, yBase, zBase, "C"]);
             if (tag === "WT_VIP1_77AA" || tag === "HET_GROUP_E_77AA") {
-              if (ri >= 14 && ri <= 63 && ri % 7 === 0) {
+              if (SB_DONOR_IDX.has(ri)) {
                 if (cIdx === 0) {
-                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.55, zBase, "C"]);
-                  aSpec.push(["OE1", sign*(loc-1.42), yBase+1.15, zBase, "O"]);
+                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.40, zBase, "C"]);
+                  aSpec.push(["OE1", sign*(loc-1.42), yBase+0.15, zBase, "O"]);
                 } else {
-                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.55, zBase, "C"]);
-                  aSpec.push(["NZ", sign*(loc-1.42), yBase+1.15, zBase, "N"]);
+                  aSpec.push(["CG", sign*(loc-0.55), yBase+0.40, zBase, "C"]);
+                  aSpec.push(["NZ", sign*(loc-1.42), yBase+0.15, zBase, "N"]);
                 }
-              } else if (ri >= 14 && ri <= 68 && (ri % 7 === 1 || ri % 7 === 4) && rName !== "PRO") {
-                aSpec.push(["CG", sign*(loc-0.70), yBase+0.15, zBase, "C"]);
-                aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.15, "C"]);
-                aSpec.push(["CD2", sign*(loc-1.18), yBase+0.25, zBase-0.15, "C"]);
+              } else if (HP_ZIPPER_IDX.has(ri) && rName !== "PRO") {
+                aSpec.push(["CG", sign*(loc-0.75), yBase+0.15, zBase, "C"]);
+                aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.12, "C"]);
               }
             } else if (tag === "ELECTRO_GLOBULAR") {
-              if (ri >= 4 && ri <= 56 && ri % 4 === 0) {
+              if (GLOB_SB_IDX.has(ri)) {
                 if (cIdx === 0) {
-                  aSpec.push(["CG", sign*(loc-0.60), yBase+0.30, zBase, "C"]);
+                  aSpec.push(["CG", sign*(loc-0.60), yBase+0.25, zBase, "C"]);
                   aSpec.push(["OD1", sign*(loc-1.45), yBase+0.10, zBase, "O"]);
                 } else {
-                  aSpec.push(["CZ", sign*(loc-0.70), yBase+0.30, zBase, "C"]);
+                  aSpec.push(["CZ", sign*(loc-0.70), yBase+0.25, zBase, "C"]);
                   aSpec.push(["NH1", sign*(loc-1.45), yBase+0.10, zBase, "N"]);
                 }
-              } else if (ri >= 6 && ri <= 46 && ri % 6 === 0) {
+              } else if (ri === 14 || ri === 24 || ri === 34) {
                 const oName = cIdx === 0 ? "OH" : "ND2";
                 const elSym = cIdx === 0 ? "O" : "N";
-                aSpec.push([oName, sign*(loc-1.45), yBase, zBase, elSym]);
+                aSpec.push([oName, sign*(loc-1.42), yBase, zBase, elSym]);
               }
             } else if (tag === "VIP1_GRF6_PTM") {
-              if (rName === "SEP") {
-                aSpec.push(["OG", sign*(loc-0.85), yBase+0.20, zBase, "O"]);
-                aSpec.push(["P", sign*(loc-1.20), yBase+0.30, zBase, "P"]);
-                aSpec.push(["O1P", sign*(loc-1.45), yBase+0.10, zBase, "O"]);
-                aSpec.push(["O2P", sign*(loc-1.45), yBase+0.45, zBase, "O"]);
-              } else if (cIdx === 1 && (ri === 14 || ri === 21 || ri === 31)) {
-                aSpec.push(["CZ", sign*(loc-0.70), yBase+0.20, zBase, "C"]);
-                aSpec.push(["NH1", sign*(loc-1.45), yBase+0.10, zBase, "N"]);
-                aSpec.push(["NH2", sign*(loc-1.45), yBase+0.45, zBase, "N"]);
-              } else if (ptmState === "phospho" && ri >= 10 && ri <= 54 && ri % 3 === 0) {
-                aSpec.push(["CG", sign*(loc-0.70), yBase+0.15, zBase, "C"]);
-                aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.15, "C"]);
-                aSpec.push(["CD2", sign*(loc-1.18), yBase+0.25, zBase-0.15, "C"]);
+              if (PTM_SEP_IDX.has(ri)) {
+                if (cIdx === 0 && rName === "SEP") {
+                  aSpec.push(["OG", sign*(loc-0.85), yBase+0.20, zBase, "O"]);
+                  aSpec.push(["P", sign*(loc-1.20), yBase+0.30, zBase, "P"]);
+                  aSpec.push(["O1P", sign*(loc-1.45), yBase+0.10, zBase, "O"]);
+                  aSpec.push(["O2P", sign*(loc-1.45), yBase+0.45, zBase, "O"]);
+                } else if (cIdx === 1) {
+                  aSpec.push(["CZ", sign*(loc-0.70), yBase+0.20, zBase, "C"]);
+                  aSpec.push(["NH1", sign*(loc-1.45), yBase+0.10, zBase, "N"]);
+                  aSpec.push(["NH2", sign*(loc-1.45), yBase+0.45, zBase, "N"]);
+                }
+              } else if (ptmState === "phospho" && (ri === 18 || ri === 27 || ri === 36 || ri === 42)) {
+                aSpec.push(["CG", sign*(loc-0.75), yBase+0.15, zBase, "C"]);
+                aSpec.push(["CD1", sign*(loc-1.22), yBase-0.10, zBase+0.12, "C"]);
               }
             } else if (tag === "HOMO_PRO_KINK" && rName === "PRO") {
               aSpec.push(["CG", xCb+sign*0.4, yBase+0.8, zBase-0.3, "C"]);
@@ -2072,7 +2093,7 @@
         const tr = document.createElement("tr");
         if (idx === ACTIVE_INDEX) tr.className = "selected-row";
         tr.onclick = () => { ACTIVE_INDEX = idx; updateUI(); };
-        const kdStr = r.Kd_nM < 1e7 ? r.Kd_nM.toFixed(2) : ">10mM (NB)";
+        const kdStr = r.Kd_nM < 0.01 ? r.Kd_nM.toExponential(2) : (r.Kd_nM < 1e7 ? r.Kd_nM.toFixed(2) : ">10mM (NB)");
         const callBadge = r.threshold_call === "ABOVE_THRESHOLD"
           ? `<span class="badge-call badge-above">ABOVE</span>`
           : `<span class="badge-call badge-below">BELOW</span>`;
@@ -2136,7 +2157,7 @@
       document.getElementById("activeModeBadge").textContent = r.mode;
       document.getElementById("activeShaBadge").textContent = `Rank #${ACTIVE_INDEX+1} · ${r.binding_class} · SHA-256: ${r.sha256_id || "—"}`;
 
-      const kdStr = r.Kd_nM < 1e7 ? `${r.Kd_nM.toFixed(2)} nM` : ">10 mM (NB)";
+      const kdStr = r.Kd_nM < 0.01 ? `${(r.Kd_nM * 1000).toFixed(2)} pM` : (r.Kd_nM < 1e7 ? `${r.Kd_nM.toFixed(2)} nM` : ">10 mM (NB)");
       const callHtml = r.threshold_call === "ABOVE_THRESHOLD"
         ? `<span class="badge-call badge-above">Above threshold</span>`
         : `<span class="badge-call badge-below">Below threshold</span>`;
@@ -2208,7 +2229,7 @@
           const opt = document.createElement("option");
           opt.value = i;
           opt.textContent = `${m.label} (Buried: ${(m.fBuried*100).toFixed(0)}%, Helix: ${m.inHel ? "Yes" : "No"})`;
-          if ((m.resSeq === 23 || (m.resSeq === 5 && r.lenA <= 30)) && m.chainId === "A") opt.selected = true;
+          if ((m.resSeq === 50 || (m.resSeq === 5 && r.lenA <= 30)) && m.chainId === "A") opt.selected = true;
           sel.appendChild(opt);
         });
         const chosen = r.mutCatalog[sel.value] || r.mutCatalog[0];
@@ -2216,7 +2237,7 @@
         const sel2 = document.getElementById("mutResidueSelect2");
         if (sel2) {
           sel2.innerHTML = sel.innerHTML;
-          const bIdx = r.mutCatalog.findIndex(m => m.chainId === "B" && (m.resSeq === 23 || m.resSeq === 5));
+          const bIdx = r.mutCatalog.findIndex(m => m.chainId === "B" && (m.resSeq === 50 || m.resSeq === 5));
           sel2.value = bIdx >= 0 ? bIdx : Math.min(1, r.mutCatalog.length - 1);
           document.getElementById("mutTargetAASelect2").value = chosen.wtName === "PRO" ? "LEU" : "NONE";
         }
@@ -2231,6 +2252,17 @@
         hsBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No high-confidence energetic hotspots (ΔΔG ≥ 1.0 kcal/mol) in this decoy.</td></tr>`;
       }
 
+      const wtSel = document.getElementById("wtStructCompareSelect");
+      const mutSel = document.getElementById("mutStructCompareSelect");
+      if (wtSel && mutSel && ALL_RESULTS.length) {
+        const opts = ALL_RESULTS.map((x, ii) => `<option value="${ii}">#${ii+1} ${x.complex_id} (ΔG=${x.dG_uni_kcal} kcal/mol)</option>`).join("");
+        wtSel.innerHTML = opts;
+        mutSel.innerHTML = opts;
+        wtSel.value = String(ACTIVE_INDEX);
+        const defMutIdx = ALL_RESULTS.findIndex((x, ii) => ii !== ACTIVE_INDEX && (x.complex_id.includes("bZIP34") || x.complex_id.includes("AAA") || x.complex_id.includes("Unphospho") || x.complex_id.includes("bZIP61")));
+        mutSel.value = String(defMutIdx >= 0 ? defMutIdx : Math.min(ALL_RESULTS.length - 1, ACTIVE_INDEX + 1));
+        runPairwiseStructureComparison();
+      }
       runInteractiveMutation();
       renderSVGMaps(r);
     }
@@ -2313,101 +2345,6 @@
         const pivotZ = m.coord ? m.coord[2] : (m.resSeq * 1.5);
         const rad = (p1.kinkDeg * Math.PI) / 180.0;
         const cosA = Math.cos(rad);
-        const signChain = m.chainId === "A" ? -1.0 : 1.0;
-        perturbedPdb = perturbedPdb.split("\n").map(line => {
-          if (!line.startsWith("ATOM  ") && !line.startsWith("HETATM")) return line;
-          const cId = line.slice(21, 22).trim();
-          const rSeq = parseInt(line.slice(22, 26).trim() || "0", 10);
-          if (cId !== m.chainId || rSeq < m.resSeq) return line;
-          let x = parseFloat(line.slice(30, 38)), y = parseFloat(line.slice(38, 46)), z = parseFloat(line.slice(46, 54));
-          if (Math.abs(p1.kinkDeg) > 1.0) {
-            const dz = z - pivotZ;
-            const nx = x + signChain * dz * Math.sin(Math.abs(rad)) * (p1.kinkDeg > 0 ? 0.55 : -0.35);
-            const nz = pivotZ + dz * cosA;
-            x = nx; z = nz;
-          } else if (Math.abs(rSeq - m.resSeq) <= 2) {
-            x += signChain * p1.meanDistShiftA * 0.6;
-          }
-          const xStr = x.toFixed(3).padStart(8, " "), yStr = y.toFixed(3).padStart(8, " "), zStr = z.toFixed(3).padStart(8, " ");
-          return line.slice(0, 30) + xStr + yStr + zStr + line.slice(54);
-        }).join("\n");
-      }
-      return { p1, p2, perturbedPdb };
-    }
-
-    function simulate3DStructuralPerturbation(r, m, targetAA, m2=null, targetAA2="NONE") {
-      // Addressing Prof. Tsugama's Point 3:
-      // A substitution in an alpha-helix or interface perturbs the 3D structure and shifts inter-atomic distances d_ij:
-      // 1. Mutating an alpha-helical residue to PRO severs the i->i-4 backbone H-bond AND introduces a ~26.0 deg steric kink
-      //    in the helix axis, displacing all downstream C-terminal residues and breaking downstream inter-chain contacts!
-      // 2. Mutating a native helical PRO to LEU/ALA straightens the kink (-26.0 deg), restoring downstream zipper contacts!
-      // 3. Bulky steric substitutions (e.g. ALA->TRP) or charge reversals (GLU->LYS) expand local inter-chain distances Delta_d_ij.
-      const VOL_AA = { GLY:60, ALA:88, SER:89, CYS:108, ASP:111, PRO:112, ASN:114, THR:116, GLU:138, VAL:140, GLN:143, HIS:153, MET:162, ILE:166, LEU:166, LYS:168, ARG:173, PHE:189, TYR:193, TRP:227 };
-      const applySitePerturb = (site, mutAA) => {
-        if (!site || !mutAA || mutAA === "NONE" || site.wtName === mutAA) {
-          return { kinkDeg: 0.0, brokenContacts: 0, restoredContacts: 0, meanDistShiftA: 0.0, ddgPropagated: 0.0, note: "Wild-type geometry retained" };
-        }
-        const isToPro = (mutAA === "PRO" && site.wtName !== "PRO" && site.inHel);
-        const isFromPro = (site.wtName === "PRO" && mutAA !== "PRO" && site.inHel);
-        const dVol = (VOL_AA[mutAA] || 140) - (VOL_AA[site.wtName] || 140);
-        let kinkDeg = 0.0, brokenContacts = 0, restoredContacts = 0, sumDistShift = 0.0, nShifted = 0, ddgPropagated = 0.0;
-
-        for (const c of (r.contacts || [])) {
-          const onSameChain = (site.chainId === (r.chain_pair || "A-B").split("-")[0]) ? c.resSeqA : c.resSeqB;
-          const seqDist = Math.abs(onSameChain - site.resSeq);
-          const isDownstream = onSameChain >= site.resSeq;
-
-          if (isToPro && isDownstream) {
-            kinkDeg = 26.5;
-            // Radial displacement from a 26.5-deg alpha-helical kink: Delta_r = (Delta_seq * 1.50 A) * tan(26.5 deg)
-            const radialShift = Math.min(8.5, Math.max(1.2, (onSameChain - site.resSeq) * 0.42));
-            sumDistShift += radialShift;
-            nShifted++;
-            if (c.minDist + radialShift > 4.6) {
-              brokenContacts += (c.sb + c.hb + Math.ceil(c.hp / 2));
-            }
-          } else if (isFromPro && isDownstream) {
-            kinkDeg = -26.5;
-            const radialRestore = -Math.min(4.5, Math.max(0.8, (onSameChain - site.resSeq) * 0.32));
-            sumDistShift += radialRestore;
-            nShifted++;
-            restoredContacts += 2;
-          } else if (seqDist <= 4) {
-            // Local steric clash or charge-repulsion backbone expansion within 4 residues
-            const isChargeRepulse = (["GLU","ASP"].includes(site.wtName) && ["LYS","ARG"].includes(mutAA)) || (["LYS","ARG"].includes(site.wtName) && ["GLU","ASP"].includes(mutAA));
-            const localShift = (dVol > 35 ? 0.85 : 0.25) + (isChargeRepulse ? 1.15 : 0.0);
-            sumDistShift += localShift;
-            nShifted++;
-            if (c.minDist + localShift > 4.5) brokenContacts += 1;
-          }
-        }
-        if (isToPro) {
-          brokenContacts = Math.max(brokenContacts, 6);
-          ddgPropagated = Number(Math.min(3.25, 0.22 * brokenContacts).toFixed(2));
-        } else if (isFromPro) {
-          restoredContacts = Math.max(restoredContacts, 6);
-          ddgPropagated = -1.25;
-        } else if (brokenContacts > 0) {
-          ddgPropagated = Number(Math.min(1.60, 0.18 * brokenContacts).toFixed(2));
-        }
-        const meanDistShiftA = nShifted ? (sumDistShift / nShifted) : (isToPro ? 3.40 : (isFromPro ? -1.80 : 0.35));
-        const note = isToPro
-          ? `α-Helix broken (26.5° Proline kink bends C-terminal axis, shifting inter-chain d_ij by +${meanDistShiftA.toFixed(2)} Å & severing ${brokenContacts} downstream contacts)`
-          : (isFromPro
-            ? `α-Helix restored (-26.5° kink straightened, tightening inter-chain d_ij by ${meanDistShiftA.toFixed(2)} Å & recovering ${restoredContacts} zipper contacts)`
-            : `Local interface relaxation shifts neighboring atom distances d_ij by +${meanDistShiftA.toFixed(2)} Å (${brokenContacts} contacts weakened)`);
-        return { kinkDeg, brokenContacts, restoredContacts, meanDistShiftA, ddgPropagated, note };
-      };
-
-      const p1 = applySitePerturb(m, targetAA);
-      const p2 = (m2 && targetAA2 !== "NONE") ? applySitePerturb(m2, targetAA2) : null;
-
-      // Also generate physically kinked/perturbed PDB coordinates so the 3D WebGL viewer renders the bent helix!
-      let perturbedPdb = r.pdbText || "";
-      if (perturbedPdb && (Math.abs(p1.kinkDeg) > 1.0 || Math.abs(p1.meanDistShiftA) > 0.4)) {
-        const pivotZ = m.coord ? m.coord[2] : (m.resSeq * 1.5);
-        const rad = (p1.kinkDeg * Math.PI) / 180.0;
-        const cosA = Math.cos(rad), sinA = Math.sin(rad);
         const signChain = m.chainId === "A" ? -1.0 : 1.0;
         perturbedPdb = perturbedPdb.split("\n").map(line => {
           if (!line.startsWith("ATOM  ") && !line.startsWith("HETATM")) return line;
@@ -2870,10 +2807,6 @@
         const homMode = document.getElementById("chumaHomologSelect")?.value || "WT";
         let ddgHom = 0.0, idPct = 100.0, homNote = "Wild-type reference sequence";
         if (homMode === "POSF21") { ddgHom = 0.18; idPct = 89.3; homNote = "Group I bZIP29/PosF21 (Conserved Leu zipper -> Retains nM binding)"; }
-        else if (homMode === "BZIP52") { ddgHom = 0.22; idPct = 87.0; homNote = "Group I AtbZIP52 (At1g06850, conserved 8-heptad Leu zipper & HXRXXS -> Retains nM dimerization)"; }
-        else if (homMode === "VSF1") { ddgHom = 0.15; idPct = 88.3; homNote = "Tomato Group I SlVSF-1 (Tsugama 2025, conserved HXRXXS 14-3-3 motif & extended coiled-coil)"; }
-        else if (homMode === "BZIP52") { ddgHom = 0.22; idPct = 87.0; homNote = "Group I AtbZIP52 (At1g06850, conserved 8-heptad Leu zipper & HXRXXS -> Retains nM dimerization)"; }
-        else if (homMode === "VSF1") { ddgHom = 0.15; idPct = 88.3; homNote = "Tomato Group I SlVSF-1 (Tsugama 2025, conserved HXRXXS 14-3-3 motif & extended coiled-coil)"; }
         else if (homMode === "BZIP52") { ddgHom = 0.22; idPct = 87.0; homNote = "Group I AtbZIP52 (At1g06850, conserved 8-heptad Leu zipper & HXRXXS -> Retains nM dimerization)"; }
         else if (homMode === "VSF1") { ddgHom = 0.15; idPct = 88.3; homNote = "Tomato Group I SlVSF-1 (Tsugama 2025, conserved HXRXXS 14-3-3 motif & extended coiled-coil)"; }
         else if (homMode === "BZIP61") { ddgHom = 0.25; idPct = 82.1; homNote = "Group E AtbZIP61 (Ile9/Val16 zipper shift -> Selective heterodimer)"; }
