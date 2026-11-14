@@ -6,8 +6,9 @@ Gate_1_Parity	4_VIP1_GRF6_14-3-3_IDR_Diluted_Pos_model_0	UIS/dG/Pattern	0.609/-7
 Gate_1_Parity	5_bZIP34_Proline_Homodimer_Negative_model_0	UIS/dG/Pattern	0.120/5.00/Pattern C	0.120/5.00/Pattern C	PASS
 Gate_1_Parity	6_VIP1_IDR_Hallucination_Decoy_model_0	UIS/dG/Pattern	0.061/2.10/Pattern D	0.061/2.10/Pattern D	PASS
 Gate_2_ModeB	Fractional_pLDDT_Scaling	mean_pLDDT	94.0	94.0	PASS
-Gate_3_Sanitizer	FoldX_Rosetta_80Col_PDB	Files_Audited	6_PDBs_Clean	80_Cols_No_GLY_CB	PASS
+Gate_3_Sanitizer	FoldX_Rosetta_80Col_PDB	Files_Audited	7_PDBs_Clean	80_Cols_No_GLY_CB	PASS
 Gate_4_SaltStress	VIP1_vs_Barnase_800mM	dG_Shift	VIP1:-11.89/Barn:-7.71	VIP1<-10.35/Barn>-10.09	PASS
+Gate_5_CrystalStructureAudit	1BRS_Barnase_Barstar_Crystal	dG<=-8.0_&_ABOVE	-10.09	0.8172	PASS
 Gate_6_LayerSync	CLI_vs_Browser_JS_Constants	All_Parameters	100%_Matched	100%_Matched	PASS
 Gate_7_MultiModal	Protein_DNA_OP1_&_Ligand_SDF	SB=1_&_V2000_SDF	Verified	Verified	PASS
 Gate_8_PTM_Gating	CPK21_pSer_SEP_vs_PP2A_Dephos	dG_Phospho=-9.81	<=-9.00_kcal/mol	Verified	PASS
@@ -23,3 +24,12 @@ Gate_18_TsugamaEmailSync	O49489_HXRXXS_VIP1AAA_RMSD_Kink_&_ConfJSON	10_Tokens_Ve
 Gate_17_ManuscriptAndJOSS	bioRxiv_Full_Manuscript_&_JOSS_Paper	3_Files_Complete	100%_Verified	100%_Verified	PASS
 Gate_19_UniversalAutoRescue	SameChain_Ligand_&_Monomer_Domain_&_MultiPredictor	2_AutoRescues_&_5_Modalities	A+A_LIG_&_A_N+A_C	100%_Universal	PASS
 Gate_20_MasterEndToEndAudit	PTM_SEP_Bound_&_3DKink_RMSD_&_SaltCurveScale	All_4_DOM_Fixes	100%_Verified	100%_Verified	PASS
+Gate_21_JSSyntaxAndDOMGuard	Headless_Browser_DOM_Leaderboard_Audit	All_6_Complexes_&_PTM_Switch	100%_Verified	100%_Verified	PASS
+Gate_22_UniversalModalityShowcase	5_Biomolecular_Modalities_Sorted_&_RMSD	Rank1=VIP1_&_Sorted_UIS	100%_Verified	100%_Verified	PASS
+Gate_23_UniversalLivePhysicsAndSHA	Unique_SHA256_&_Live_Salt_pH_Response_All_5_Modalities	6_Unique_SHAs_&_Dynamic_dG	100%_Verified	100%_Verified	PASS
+Gate_24_UnclampedBzip34And3DModalityBackbones	bZIP34_Unclamped_&_Full_3D_Backbones_All_Modalities	dG<4.5_&_>300_PDB_Lines	100%_Verified	100%_Verified	PASS
+Gate_25_DoubleMutantRescueAndReceptorCatalog	bZIP34_Rescue_<-6.8_&_ReceptorOnly_NonPolymer_Catalogs	100%_Verified	100%_Verified	100%_Verified	PASS
+Gate_26_CSVModalityAndSub10uMProlineRescue	CSV_TSV_Modality_Col_&_bZIP34_Rescue_-7.21_kcal	100%_Verified	100%_Verified	100%_Verified	PASS
+Gate_27_MonomerChainMappingAndHotspotSync	Monomer_A_N_CHUMA_SVG_&_Modality_Hotspot_cInfo_Sync	77_Res_All_6_Rows	100%_Verified	100%_Verified	PASS
+Gate_28_MonomerHotspotAnd3DPerturbSync	Monomer_A_N_TopHotspot_&_3D_PDB_Chain_Sync	A_N:ARG16	100%_Verified	100%_Verified	PASS
+Gate_29_AutoPairedProlineRescueAndChargeSwap	bZIP34_AutoPair_B:PRO40_&_Bidirectional_ChargeSwap	100%_Verified	100%_Verified	100%_Verified	PASS

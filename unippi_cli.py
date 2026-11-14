@@ -1412,6 +1412,7 @@ def process_structure_file(
     res_to_global_idx = {r.key: idx for idx, r in enumerate(ordered_residues)}
 
     stem = os.path.splitext(os.path.basename(filepath))[0]
+    out_dir = out_dir or "./demo_results"
     struct_out_dir = os.path.join(out_dir, "converted_structures")
     os.makedirs(struct_out_dir, exist_ok=True)
 
