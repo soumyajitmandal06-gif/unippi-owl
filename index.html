@@ -1346,10 +1346,12 @@
           if (wij >= 0.25) { nSb += effSb; nHb += effHb; nHp += effHp; nPi += pPi; nSs += pSs; nClash += effClash; }
           wSb += wij*effSb; wHb += wij*effHb; wHp += wij*effHpW; wPi += wij*pPi; wClash += wij*effClash;
 
-          for (const rk of [ra.key, rb.key]) {
-            if (!resContrib.has(rk)) resContrib.set(rk, { sb:0, hb:0, hp:0, pi:0 });
-            const rc = resContrib.get(rk);
-            rc.sb += wij*effSb; rc.hb += wij*effHb; rc.hp += wij*effHpW; rc.pi += wij*pPi;
+          if (wij >= 0.25) {
+            for (const rk of [ra.key, rb.key]) {
+              if (!resContrib.has(rk)) resContrib.set(rk, { sb:0, hb:0, hp:0, pi:0 });
+              const rc = resContrib.get(rk);
+              rc.sb += wij*effSb; rc.hb += wij*effHb; rc.hp += wij*effHpW; rc.pi += wij*pPi;
+            }
           }
 
           contacts.push({
@@ -1389,6 +1391,7 @@
 
       let nisAp=0, nisCh=0, nisTot=0;
       for (const r of [...resA, ...resB]) {
+        if (hasOrdCore && platConf(r) < 0.35) continue;
         if (intfA.has(r.key) || intfB.has(r.key)) continue;
         if ((sasaComp[r.key] || 0) >= 10.0) {
           nisTot++;
@@ -1851,16 +1854,17 @@
       const ensBanner = document.getElementById("ensembleSummaryBanner");
       if (ensBanner) {
         if (ALL_RESULTS.length > 1) {
-          const mSd = arr => {
+          const mSd = (arr, dec=2) => {
             if (!arr.length) return "N/A";
             const m = arr.reduce((a,b)=>a+b,0)/arr.length;
             const sd = arr.length > 1 ? Math.sqrt(arr.reduce((a,b)=>a+Math.pow(b-m,2),0)/(arr.length-1)) : 0.0;
-            return `${m.toFixed(2)} ± ${sd.toFixed(2)}`;
+            return `${m.toFixed(dec)} ± ${sd.toFixed(dec)}`;
           };
           const fullPaeModels = ALL_RESULTS.filter(x => x.mode === "MODE_A_PRED_FULL");
-          const lisSummary = fullPaeModels.length ? mSd(fullPaeModels.map(x=>x.LIS)) : "N/A (Coord Mode)";
+          const iptmSummary = fullPaeModels.length ? mSd(fullPaeModels.map(x=>x.ipTM), 3) : "N/A";
+          const lisSummary = fullPaeModels.length ? mSd(fullPaeModels.map(x=>x.LIS), 3) : "N/A (Coord Mode)";
           ensBanner.style.display = "block";
-          ensBanner.innerHTML = `<strong>MULTI-MODEL ENSEMBLE SUMMARY (N = ${ALL_RESULTS.length} Models, Mean ± SD):</strong> UIS = <strong>${mSd(ALL_RESULTS.map(x=>x.UIS))}</strong> · ΔG<sub>uni</sub> = <strong>${mSd(ALL_RESULTS.map(x=>x.dG_uni_kcal))} kcal/mol</strong> · Local LIS = <strong>${lisSummary}</strong> · wBSA = <strong>${mSd(ALL_RESULTS.map(x=>x.wBSA_A2))} Å²</strong> · Confident Contacts = <strong>${mSd(ALL_RESULTS.map(x=>x.confContactCount ?? (x.contacts||[]).length))}</strong>`;
+          ensBanner.innerHTML = `<strong>MULTI-MODEL ENSEMBLE SUMMARY (N = ${ALL_RESULTS.length} Models, Mean ± SD):</strong> UIS = <strong>${mSd(ALL_RESULTS.map(x=>x.UIS), 3)}</strong> · ΔG<sub>uni</sub> = <strong>${mSd(ALL_RESULTS.map(x=>x.dG_uni_kcal), 2)} kcal/mol</strong> · ipTM = <strong>${iptmSummary}</strong> · Local LIS = <strong>${lisSummary}</strong> · wBSA = <strong>${mSd(ALL_RESULTS.map(x=>x.wBSA_A2), 1)} Å²</strong> · Confident Contacts = <strong>${mSd(ALL_RESULTS.map(x=>x.confContactCount ?? (x.contacts||[]).length), 1)}</strong>`;
         } else {
           ensBanner.style.display = "none";
         }
@@ -2285,6 +2289,8 @@
         if (c.hb > 0) tags.push(`HB:${c.hb}`);
         if (c.hp > 0) tags.push(`HP:${c.hp}`);
         if (c.pi > 0) tags.push(`π:${c.pi}`);
+        if (c.ss > 0) tags.push(`SS:${c.ss}`);
+        if (c.clash > 0) tags.push(`Clash:${c.clash}`);
         if (!tags.length) tags.push("vdW");
         tr.onclick = () => zoomToContactPair3D(r, c);
         tr.innerHTML = `

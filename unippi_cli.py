@@ -816,11 +816,10 @@ def analyze_interface_pair(
             ca_cls = PRODIGY_CLASS.get(cna, "APOLAR" if ra.entity_type == "LIGAND" else "POLAR")
             cb_cls = PRODIGY_CLASS.get(cnb, "APOLAR" if rb.entity_type == "LIGAND" else "POLAR")
             pair_cls = "_".join(sorted([ca_cls, cb_cls]))
-            if min(len(residues_a), len(residues_b)) >= 50:
-                if pair_cls == "APOLAR_CHARGED":
-                    pair_cls = "CHARGED_APOLAR"
-                elif pair_cls == "APOLAR_POLAR":
-                    pair_cls = "POLAR_APOLAR"
+            if pair_cls == "APOLAR_CHARGED":
+                pair_cls = "CHARGED_APOLAR"
+            elif pair_cls == "APOLAR_POLAR":
+                pair_cls = "POLAR_APOLAR"
             if pair_cls in prodigy_ic:
                 prodigy_ic[pair_cls] += w_ij
 
@@ -938,7 +937,7 @@ def analyze_interface_pair(
                 if near and is_strained:
                     helical_prolines += 1
 
-    conf_contact_log = [c for c in residue_contact_log if c["weight_w"] >= 0.15]
+    conf_contact_log = [c for c in residue_contact_log if c["weight_w"] >= 0.25]
     has_ordered_core = len(conf_contact_log) > 0
     if has_ordered_core:
         ordered_keys_a = {r.key for r in residues_a if residue_plateau_conf(r) >= 0.35} or {r.key for r in residues_a}
@@ -1112,7 +1111,7 @@ def analyze_interface_pair(
         ]
         mean_intf_plddt = mean_list(intf_plddts, 50.0)
         mean_intf_pae = mean_list([c["pae_A"] for c in conf_contact_log], 3.5)
-        n_cb8 = max(len(conf_contact_log), sum(1 for w in pair_weights_seen if w >= 0.15))
+        n_cb8 = max(len(conf_contact_log), sum(1 for w in pair_weights_seen if w >= 0.25))
     else:
         intf_plddts = [
             residue_raw_plddt(r)
@@ -1131,7 +1130,7 @@ def analyze_interface_pair(
     if n_cb8 == 0:
         pdockq_coord = 0.0
     excess_intf_pae = max(0.0, mean_intf_pae - 3.5)
-    pdockq_pae = pdockq_coord * (1.0 / (1.0 + (excess_intf_pae / 8.0) ** 2))
+    pdockq_pae = pdockq_coord * (1.0 / (1.0 + (excess_intf_pae / 8.0) ** 2)) if mode == "MODE_A_PRED_FULL" else clamp(pdockq_coord / 0.742, 0.0, 1.0)
 
     lis_score = 0.0
     if pae_mat is not None:
@@ -1152,7 +1151,7 @@ def analyze_interface_pair(
 
     iptm_val = conf_data.get("iptm", None)
     if iptm_val is None:
-        iptm_val = pdockq_pae if mode == "MODE_A_PRED_FULL" else pdockq_coord
+        iptm_val = pdockq_pae if mode == "MODE_A_PRED_FULL" else clamp(pdockq_coord / 0.742, 0.0, 1.0)
 
     sigma_aff = clamp((-dg_uni - 5.0) / 8.5, 0.0, 1.0)
 
